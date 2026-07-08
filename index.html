@@ -4,13 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>甲骨文伏妖錄</title>
-
-    <!-- CryptoJS for HMAC-SHA256 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
     </script>
-
     <style>
-        /* ===== 全局重置 & 滿版設定 ===== */
+        /* ===== 全局重置 ===== */
         * {
             margin: 0;
             padding: 0;
@@ -19,27 +16,22 @@
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
         }
-
-        html,
-        body {
+        html, body {
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: #0a0a0f;
+            background: #f5f0e8;
             font-family: 'PingFang TC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
             touch-action: none;
             position: fixed;
             top: 0;
             left: 0;
         }
-
-        /* ===== 主容器 ===== */
         #app {
             display: flex;
             width: 100vw;
             height: 100vh;
-            overflow: hidden;
-            background: radial-gradient(ellipse at 50% 50%, #1a1a2e, #0a0a0f);
+            background: #f5f0e8;
         }
 
         /* ===== 左側面板 ===== */
@@ -51,13 +43,11 @@
             align-items: center;
             justify-content: center;
             padding: 2vh 2vw;
-            background: rgba(20, 18, 30, 0.7);
+            background: rgba(255, 250, 240, 0.85);
             backdrop-filter: blur(4px);
-            border-right: 1px solid rgba(255, 215, 100, 0.15);
+            border-right: 1px solid rgba(180, 150, 100, 0.2);
             position: relative;
-            overflow: hidden;
         }
-
         #left-panel::before {
             content: '';
             position: absolute;
@@ -65,31 +55,24 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at 30% 40%, rgba(255, 180, 50, 0.03), transparent 60%);
+            background: radial-gradient(circle at 30% 40%, rgba(200, 170, 120, 0.05), transparent 60%);
             pointer-events: none;
             animation: breatheGlow 8s ease-in-out infinite alternate;
         }
-
         @keyframes breatheGlow {
-            0% {
-                opacity: 0.3;
-                transform: scale(1);
-            }
-            100% {
-                opacity: 0.8;
-                transform: scale(1.05);
-            }
+            0% { opacity: 0.3; transform: scale(1); }
+            100% { opacity: 0.8; transform: scale(1.05); }
         }
 
-        /* ===== 提示資訊區 ===== */
+        /* ===== 狀態提示 ===== */
         #status-area {
             width: 100%;
             max-width: 580px;
             text-align: center;
             padding: 1.2vh 1vw;
             margin-bottom: 1.5vh;
-            background: rgba(255, 215, 100, 0.06);
-            border: 1px solid rgba(255, 215, 100, 0.12);
+            background: rgba(255, 245, 230, 0.7);
+            border: 1px solid rgba(180, 150, 100, 0.2);
             border-radius: 16px;
             position: relative;
             z-index: 2;
@@ -99,49 +82,37 @@
             align-items: center;
             justify-content: center;
         }
-
         #status-text {
             font-size: clamp(1.1rem, 2.2vh, 1.8rem);
-            color: #f0e6c5;
+            color: #3a2e1e;
             letter-spacing: 0.06em;
-            font-weight: 300;
-            text-shadow: 0 0 20px rgba(255, 215, 100, 0.1);
+            font-weight: 400;
             line-height: 1.6;
         }
-
         #status-text .highlight {
-            color: #ffd764;
-            font-weight: 500;
-            text-shadow: 0 0 30px rgba(255, 215, 100, 0.3);
+            color: #b8860b;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(184, 134, 11, 0.15);
         }
-
         #pinyin-display {
-            font-size: clamp(1.6rem, 3.2vh, 2.8rem);
-            color: #ffd764;
+            font-size: clamp(1.8rem, 3.6vh, 3rem);
+            color: #b8860b;
             font-weight: 600;
             letter-spacing: 0.1em;
-            text-shadow: 0 0 40px rgba(255, 215, 100, 0.25);
+            text-shadow: 0 0 30px rgba(184, 134, 11, 0.15);
             margin-top: 0.2vh;
             display: none;
         }
-
         #pinyin-display.show {
             display: block;
             animation: pinyinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
-
         @keyframes pinyinPop {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) translateY(10px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            0% { opacity: 0; transform: scale(0.6) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        /* ===== 畫布區 ===== */
+        /* ===== 畫布 ===== */
         #canvas-wrapper {
             position: relative;
             width: 100%;
@@ -149,13 +120,12 @@
             aspect-ratio: 1 / 1;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 0 60px rgba(255, 215, 100, 0.06), inset 0 0 80px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 215, 100, 0.10);
-            background: #0d0b14;
+            box-shadow: 0 0 40px rgba(180, 150, 100, 0.15), inset 0 0 60px rgba(255, 250, 240, 0.5);
+            border: 1px solid rgba(180, 150, 100, 0.25);
+            background: #ffffff;
             z-index: 2;
             touch-action: none;
         }
-
         #canvas-wrapper canvas {
             display: block;
             width: 100%;
@@ -163,8 +133,6 @@
             touch-action: none;
             cursor: pointer;
         }
-
-        /* 畫布上層裝飾 */
         #canvas-wrapper::after {
             content: '';
             position: absolute;
@@ -173,12 +141,12 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(200, 180, 160, 0.1) 100%);
             border-radius: 20px;
             z-index: 1;
         }
 
-        /* ===== 控制按鈕區 ===== */
+        /* ===== 按鈕區 ===== */
         #controls {
             display: flex;
             flex-wrap: wrap;
@@ -192,7 +160,6 @@
             position: relative;
             z-index: 2;
         }
-
         .btn {
             padding: 0.8vh 1.8vw;
             min-height: 5vh;
@@ -205,9 +172,9 @@
             transition: all 0.25s ease;
             letter-spacing: 0.04em;
             touch-action: manipulation;
-            background: rgba(255, 255, 255, 0.05);
-            color: #c8bda0;
-            border: 1px solid rgba(255, 215, 100, 0.15);
+            background: rgba(255, 255, 255, 0.6);
+            color: #3a2e1e;
+            border: 1px solid rgba(180, 150, 100, 0.3);
             backdrop-filter: blur(4px);
             display: inline-flex;
             align-items: center;
@@ -215,96 +182,65 @@
             gap: 0.4vw;
             flex: 0 1 auto;
             white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
-
-        .btn:active {
-            transform: scale(0.94);
-        }
-
+        .btn:active { transform: scale(0.94); }
         .btn-primary {
-            background: linear-gradient(135deg, #f5b042, #d48a2a);
-            color: #0a0a0f;
-            border-color: #f5b042;
-            box-shadow: 0 4px 30px rgba(245, 176, 66, 0.2);
-            font-weight: 600;
-        }
-        .btn-primary:active {
-            box-shadow: 0 2px 15px rgba(245, 176, 66, 0.1);
+            background: linear-gradient(135deg, #d4a017, #b8860b);
+            color: #fff;
+            border-color: #b8860b;
+            box-shadow: 0 4px 20px rgba(184, 134, 11, 0.25);
         }
         .btn-primary:disabled {
-            opacity: 0.35;
-            filter: grayscale(0.6);
+            opacity: 0.4;
+            filter: grayscale(0.5);
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
         }
-
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.10);
-            color: #c8bda0;
+            background: rgba(255, 255, 255, 0.5);
+            border-color: rgba(180, 150, 100, 0.2);
+            color: #3a2e1e;
         }
-        .btn-secondary:active {
-            background: rgba(255, 255, 255, 0.12);
-        }
+        .btn-secondary:active { background: rgba(200, 180, 160, 0.3); }
         .btn-secondary:disabled {
-            opacity: 0.25;
+            opacity: 0.3;
             cursor: not-allowed;
             transform: none;
         }
-
         .btn-danger {
-            background: rgba(255, 70, 70, 0.15);
-            border-color: rgba(255, 70, 70, 0.25);
-            color: #ff7a7a;
+            background: rgba(200, 70, 70, 0.1);
+            border-color: rgba(200, 70, 70, 0.25);
+            color: #a94442;
         }
-        .btn-danger:active {
-            background: rgba(255, 70, 70, 0.25);
-        }
-
         .btn-voice {
-            background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), rgba(60, 120, 255, 0.10));
-            border-color: rgba(100, 200, 255, 0.25);
-            color: #8ac4ff;
-            position: relative;
+            background: linear-gradient(135deg, rgba(100, 150, 255, 0.1), rgba(60, 100, 200, 0.05));
+            border-color: rgba(60, 100, 200, 0.2);
+            color: #3a6bb0;
         }
         .btn-voice.recording {
             animation: pulseMic 1.2s ease-in-out infinite;
-            border-color: #ff5a5a;
-            color: #ff5a5a;
-            background: rgba(255, 70, 70, 0.12);
+            border-color: #c0392b;
+            color: #c0392b;
+            background: rgba(200, 70, 70, 0.1);
         }
-
         @keyframes pulseMic {
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(255, 70, 70, 0.15);
-            }
-            50% {
-                box-shadow: 0 0 40px rgba(255, 70, 70, 0.35), 0 0 80px rgba(255, 70, 70, 0.10);
-            }
+            0%, 100% { box-shadow: 0 0 10px rgba(192, 57, 43, 0.15); }
+            50% { box-shadow: 0 0 30px rgba(192, 57, 43, 0.3), 0 0 60px rgba(192, 57, 43, 0.05); }
         }
-
-        .btn-glow {
-            animation: glowPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes glowPulse {
-            0%,
-            100% {
-                box-shadow: 0 0 20px rgba(255, 215, 100, 0.05);
-            }
-            50% {
-                box-shadow: 0 0 60px rgba(255, 215, 100, 0.15);
-            }
-        }
-
         .btn-success {
-            background: linear-gradient(135deg, #5ddb7a, #2eaa4e);
-            color: #0a0a0f;
-            border-color: #5ddb7a;
-            box-shadow: 0 4px 30px rgba(93, 219, 122, 0.2);
+            background: linear-gradient(135deg, #5cb85c, #449d44);
+            color: #fff;
+            border-color: #449d44;
+            box-shadow: 0 4px 20px rgba(68, 157, 68, 0.25);
         }
+        .btn-clear {
+            background: rgba(200, 180, 160, 0.2);
+            border-color: rgba(180, 150, 100, 0.15);
+            color: #6b5a44;
+        }
+        .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
         /* ===== 右側面板 ===== */
         #right-panel {
@@ -314,18 +250,16 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(ellipse at 60% 40%, #1e1a2a, #0a080f);
+            background: radial-gradient(ellipse at 60% 40%, #faf5ee, #f0ebe3);
             position: relative;
             overflow: hidden;
             padding: 2vh 2vw;
         }
-
-        /* 法陣背景 */
         #right-panel::before {
             content: '✦';
             position: absolute;
             font-size: 50vh;
-            color: rgba(255, 215, 100, 0.018);
+            color: rgba(180, 150, 100, 0.06);
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(0deg);
@@ -333,7 +267,6 @@
             pointer-events: none;
             font-family: serif;
         }
-
         #right-panel::after {
             content: '';
             position: absolute;
@@ -341,22 +274,17 @@
             left: 10%;
             width: 80%;
             height: 80%;
-            border: 1px solid rgba(255, 215, 100, 0.03);
+            border: 1px solid rgba(180, 150, 100, 0.08);
             border-radius: 50%;
             animation: spinArray 60s linear infinite reverse;
             pointer-events: none;
         }
-
         @keyframes spinArray {
-            0% {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-            100% {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
-        /* ===== 妖怪展示區 ===== */
+        /* ===== 妖怪展示 ===== */
         #reveal-area {
             display: none;
             flex-direction: column;
@@ -370,152 +298,85 @@
             width: 100%;
             max-width: 500px;
         }
-
-        #reveal-area.show {
-            display: flex;
-        }
-
+        #reveal-area.show { display: flex; }
         @keyframes revealAppear {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) rotate(-8deg);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) rotate(0deg);
-            }
+            0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
-
         #modern-char {
             font-size: clamp(6rem, 16vh, 12rem);
             font-weight: 700;
-            color: #ffd764;
-            text-shadow: 0 0 60px rgba(255, 215, 100, 0.4), 0 0 120px rgba(255, 215, 100, 0.15), 0 0 200px rgba(255, 200, 50, 0.05);
+            color: #b8860b;
+            text-shadow: 0 0 60px rgba(184, 134, 11, 0.3), 0 0 120px rgba(184, 134, 11, 0.1);
             letter-spacing: 0.1em;
             line-height: 1;
             animation: charGlow 3s ease-in-out infinite alternate;
         }
-
         @keyframes charGlow {
-            0% {
-                text-shadow: 0 0 60px rgba(255, 215, 100, 0.3), 0 0 120px rgba(255, 215, 100, 0.10);
-            }
-            100% {
-                text-shadow: 0 0 80px rgba(255, 215, 100, 0.6), 0 0 180px rgba(255, 215, 100, 0.25), 0 0 300px rgba(255, 200, 50, 0.08);
-            }
+            0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
+            100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
-
         #animal-emoji {
             font-size: clamp(8rem, 22vh, 16rem);
             line-height: 1;
             animation: floatAnimal 3.5s ease-in-out infinite;
-            filter: drop-shadow(0 0 40px rgba(255, 215, 100, 0.15));
+            filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
         }
-
         @keyframes floatAnimal {
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-20px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
 
-        /* 未解鎖時的佔位 */
         #placeholder-area {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 2;
-            color: rgba(255, 215, 100, 0.10);
+            color: rgba(180, 150, 100, 0.2);
             font-size: clamp(1rem, 2vh, 1.6rem);
             letter-spacing: 0.2em;
             text-align: center;
             padding: 2vh;
         }
-
         #placeholder-area .symbol {
             font-size: clamp(4rem, 10vh, 8rem);
-            opacity: 0.15;
+            opacity: 0.2;
             margin-bottom: 1vh;
             animation: spinArray 30s linear infinite;
         }
 
-        /* ===== 分數顯示（調試/視覺） ===== */
         #score-badge {
             position: absolute;
             bottom: 1.5vh;
             right: 1.5vw;
             font-size: clamp(0.7rem, 1.2vh, 1rem);
-            color: rgba(255, 215, 100, 0.20);
-            background: rgba(0, 0, 0, 0.4);
+            color: rgba(100, 80, 60, 0.3);
+            background: rgba(255, 255, 255, 0.6);
             padding: 0.3vh 0.8vw;
             border-radius: 20px;
-            border: 1px solid rgba(255, 215, 100, 0.05);
+            border: 1px solid rgba(180, 150, 100, 0.15);
             pointer-events: none;
             z-index: 10;
-            font-weight: 300;
+            font-weight: 400;
             letter-spacing: 0.04em;
         }
 
-        /* ===== 響應式微調 ===== */
-        @media (max-width: 768px) {
-            #left-panel {
-                padding: 1.5vh 2vw;
-            }
-            #controls {
-                gap: 0.6vh 1.2vw;
-            }
-            .btn {
-                padding: 0.6vh 2.5vw;
-                min-height: 4.5vh;
-                font-size: clamp(0.7rem, 1.4vh, 1rem);
-                min-width: 10vw;
-            }
-        }
-
-        @media (orientation: portrait) {
-            /* 強制橫屏提示 */
-            #app::after {
-                content: '👆 請將裝置旋轉至橫屏使用';
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background: rgba(0, 0, 0, 0.92);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: clamp(1.2rem, 4vw, 2.4rem);
-                color: #ffd764;
-                z-index: 9999;
-                letter-spacing: 0.08em;
-                backdrop-filter: blur(10px);
-                font-weight: 300;
-                text-align: center;
-                padding: 10vw;
-                line-height: 1.8;
-            }
-        }
-
-        /* ===== 載入動畫 ===== */
+        /* ===== 載入遮罩 ===== */
         #loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: #0a0a0f;
+            background: #f5f0e8;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 10000;
             transition: opacity 0.8s ease;
-            color: #ffd764;
+            color: #b8860b;
             font-size: clamp(1rem, 2vh, 1.6rem);
             letter-spacing: 0.1em;
         }
@@ -526,102 +387,51 @@
         #loading-overlay .spinner {
             width: 50px;
             height: 50px;
-            border: 3px solid rgba(255, 215, 100, 0.08);
-            border-top: 3px solid #ffd764;
+            border: 3px solid rgba(184, 134, 11, 0.1);
+            border-top: 3px solid #b8860b;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-bottom: 2vh;
         }
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* 清除按鈕特殊樣式 */
-        .btn-clear {
-            background: rgba(255, 255, 255, 0.03);
-            border-color: rgba(255, 255, 255, 0.06);
-            color: #887e6a;
-        }
-        .btn-clear:active {
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        /* 小工具：狀態指示燈 */
-        .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        .dot.green {
-            background: #5ddb7a;
-            box-shadow: 0 0 20px rgba(93, 219, 122, 0.3);
-        }
-        .dot.yellow {
-            background: #f5b042;
-            box-shadow: 0 0 20px rgba(245, 176, 66, 0.2);
-        }
-        .dot.red {
-            background: #ff5a5a;
-            box-shadow: 0 0 20px rgba(255, 70, 70, 0.2);
-        }
-        .dot.gray {
-            background: #444;
-        }
+        /* ===== 移除橫屏限制 ===== */
+        /* @media (orientation: portrait) 已移除 */
     </style>
 </head>
 <body>
-
-    <!-- ===== 載入遮罩 ===== -->
     <div id="loading-overlay">
         <div class="spinner"></div>
         <div>🔮 召喚甲骨文靈力 ...</div>
     </div>
 
-    <!-- ===== 主應用 ===== -->
     <div id="app">
-
-        <!-- 左側面板 -->
         <div id="left-panel">
-            <!-- 狀態提示 -->
             <div id="status-area">
                 <div id="status-text">✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span></div>
                 <div id="pinyin-display"></div>
             </div>
-
-            <!-- 畫布 -->
             <div id="canvas-wrapper">
                 <canvas id="oracleCanvas"></canvas>
             </div>
-
-            <!-- 控制按鈕 -->
             <div id="controls">
                 <button class="btn btn-clear" id="btnClear">🗑 清除</button>
                 <button class="btn btn-primary" id="btnVerify">⚡ 驗證符文</button>
                 <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
                 <button class="btn btn-success" id="btnNext" style="display:none;">🔮 尋找下個妖怪</button>
             </div>
-
             <div id="score-badge">靈力 · 待啟動</div>
         </div>
 
-        <!-- 右側面板 -->
         <div id="right-panel">
-            <!-- 預設佔位 -->
             <div id="placeholder-area">
                 <div class="symbol">⛩️</div>
                 <div>等待符文之力</div>
                 <div style="font-size:0.7em; opacity:0.5; margin-top:0.5vh;">描繪甲骨文 · 誦唸咒語</div>
             </div>
-
-            <!-- 妖怪現形區 -->
             <div id="reveal-area">
                 <div id="modern-char">羊</div>
                 <div id="animal-emoji">🐑</div>
@@ -630,53 +440,29 @@
     </div>
 
     <script>
-        // ================================================================
-        //  《甲骨文伏妖錄》 - 完整互動邏輯
-        //  技術棧：Canvas 2D · AudioWorklet · WebSocket · CryptoJS
-        //  版本：1.0.0 (已嵌入真實 API 憑證)
-        // ================================================================
-
         (function() {
             'use strict';
 
-            // ============================================================
-            //  1. 配置與常量 (已套用用戶提供的憑證)
-            // ============================================================
-
+            // ========== 1. 配置 ==========
             const XF_CONFIG = {
                 APPID: '2600b137',
                 API_KEY: '8b012124ed213c06974cd469f29e134b',
                 API_SECRET: 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj',
                 WSS_URL: 'wss://ise-api.xfyun.cn/v2/ise',
             };
+            const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
+            const THRESHOLDS = { drawPass: 60, voicePass: 60 };
 
-            // ---- 錄音參數 ----
-            const AUDIO_CONFIG = {
-                sampleRate: 16000,
-                bitDepth: 16,
-                channels: 1,
-                frameDuration: 40,
-                maxRecordSeconds: 8,
-            };
-
-            // ---- 比對閾值 ----
-            const THRESHOLDS = {
-                drawPass: 60,
-                voicePass: 60,
-            };
-
-            // ============================================================
-            //  2. 字庫數據 (同前)
-            // ============================================================
-
+            // ========== 2. 字庫 (含聲調拼音) ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
-                pinyin: 'yang2',
+                pinyinRaw: 'yang2',
+                pinyinTone: 'yáng',
                 emoji: '🐑',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.strokeStyle = 'rgba(100,80,60,0.25)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -700,14 +486,13 @@
                     ctx.beginPath();
                     ctx.ellipse(cx, cy + s * 0.4, s * 0.5, s * 0.45, 0, 0, Math.PI * 2);
                     ctx.stroke();
-                    for (let side = -1; side <= 1; side += 2) {
+                    for (let side = -1; side <= 1; side += 2)
                         for (let leg = -1; leg <= 1; leg += 2) {
                             ctx.beginPath();
                             ctx.moveTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 0.7);
                             ctx.lineTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 1.1);
                             ctx.stroke();
                         }
-                    }
                     ctx.beginPath();
                     ctx.moveTo(cx + s * 0.5, cy + s * 0.4);
                     ctx.quadraticCurveTo(cx + s * 0.9, cy + s * 0.2, cx + s * 0.8, cy + s * 0.6);
@@ -716,11 +501,12 @@
             }, {
                 id: 'ma',
                 char: '馬',
-                pinyin: 'ma3',
+                pinyinRaw: 'ma3',
+                pinyinTone: 'mǎ',
                 emoji: '🐴',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.strokeStyle = 'rgba(100,80,60,0.25)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -743,14 +529,13 @@
                     ctx.beginPath();
                     ctx.ellipse(cx + s * 0.1, cy + s * 0.2, s * 0.5, s * 0.4, 0.1, 0, Math.PI * 2);
                     ctx.stroke();
-                    for (let side = -1; side <= 1; side += 2) {
+                    for (let side = -1; side <= 1; side += 2)
                         for (let leg = -1; leg <= 1; leg += 2) {
                             ctx.beginPath();
                             ctx.moveTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.5);
                             ctx.lineTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.95);
                             ctx.stroke();
                         }
-                    }
                     ctx.beginPath();
                     ctx.moveTo(cx + s * 0.6, cy + s * 0.15);
                     ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.1, cx + s * 0.8, cy + s * 0.4);
@@ -759,11 +544,12 @@
             }, {
                 id: 'niu',
                 char: '牛',
-                pinyin: 'niu2',
+                pinyinRaw: 'niu2',
+                pinyinTone: 'niú',
                 emoji: '🐮',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.strokeStyle = 'rgba(100,80,60,0.25)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -788,14 +574,13 @@
                     ctx.beginPath();
                     ctx.ellipse(cx, cy + s * 0.35, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
                     ctx.stroke();
-                    for (let side = -1; side <= 1; side += 2) {
+                    for (let side = -1; side <= 1; side += 2)
                         for (let leg = -1; leg <= 1; leg += 2) {
                             ctx.beginPath();
                             ctx.moveTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 0.65);
                             ctx.lineTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 1.05);
                             ctx.stroke();
                         }
-                    }
                     ctx.beginPath();
                     ctx.moveTo(cx + s * 0.55, cy + s * 0.3);
                     ctx.quadraticCurveTo(cx + s * 0.85, cy + s * 0.1, cx + s * 0.75, cy + s * 0.5);
@@ -804,11 +589,12 @@
             }, {
                 id: 'niao',
                 char: '鳥',
-                pinyin: 'niao3',
+                pinyinRaw: 'niao3',
+                pinyinTone: 'niǎo',
                 emoji: '🐦',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.strokeStyle = 'rgba(100,80,60,0.25)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -851,11 +637,12 @@
             }, {
                 id: 'yu',
                 char: '魚',
-                pinyin: 'yu2',
+                pinyinRaw: 'yu2',
+                pinyinTone: 'yú',
                 emoji: '🐟',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.strokeStyle = 'rgba(100,80,60,0.25)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -870,7 +657,7 @@
                     ctx.stroke();
                     ctx.beginPath();
                     ctx.arc(cx + s * 0.55, cy - s * 0.05, s * 0.06, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,215,100,0.15)';
+                    ctx.fillStyle = 'rgba(100,80,60,0.15)';
                     ctx.fill();
                     ctx.stroke();
                     ctx.beginPath();
@@ -896,35 +683,26 @@
                 }
             }];
 
-            // ============================================================
-            //  3. 狀態管理
-            // ============================================================
-
+            // ========== 3. 狀態 ==========
             const state = {
                 currentChar: null,
-                phase: 'draw',
+                phase: 'draw', // draw | voice | reveal
                 canvasLocked: false,
                 isRecording: false,
                 isVerifying: false,
-                isVoiceProcessing: false,
                 drawScore: 0,
                 voiceScore: 0,
                 audioContext: null,
                 audioWorkletNode: null,
                 mediaStream: null,
                 audioBuffer: [],
-                recordStartTime: 0,
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
-                isSimulateMode: false, // 因已嵌入憑證，保持 false
             };
 
-            // ============================================================
-            //  4. DOM 引用
-            // ============================================================
-
-            const $ = (id) => document.getElementById(id);
+            // ========== 4. DOM ==========
+            const $ = id => document.getElementById(id);
             const canvas = $('oracleCanvas');
             const ctx = canvas.getContext('2d');
             const statusText = $('status-text');
@@ -940,13 +718,9 @@
             const scoreBadge = $('score-badge');
             const loadingOverlay = $('loading-overlay');
 
-            // ============================================================
-            //  5. Canvas 尺寸與繪圖 (同前)
-            // ============================================================
-
+            // ========== 5. Canvas ==========
             let canvasW, canvasH;
             let isDrawing = false;
-            let lastX, lastY;
             let drawHistory = [];
 
             function resizeCanvas() {
@@ -962,9 +736,9 @@
                 ctx.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                ctx.strokeStyle = '#ffd764';
-                ctx.shadowColor = 'rgba(255,215,100,0.15)';
-                ctx.shadowBlur = 12;
+                ctx.strokeStyle = '#5a4a3a';
+                ctx.shadowColor = 'rgba(100,80,60,0.1)';
+                ctx.shadowBlur = 8;
                 renderOracle();
             }
 
@@ -975,10 +749,10 @@
                 }
                 if (drawHistory.length > 0) {
                     ctx.save();
-                    ctx.strokeStyle = '#ffd764';
+                    ctx.strokeStyle = '#5a4a3a';
                     ctx.lineWidth = Math.max(3, canvasW * 0.02);
-                    ctx.shadowColor = 'rgba(255,215,100,0.2)';
-                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'rgba(100,80,60,0.15)';
+                    ctx.shadowBlur = 10;
                     ctx.globalAlpha = 0.85;
                     for (const path of drawHistory) {
                         if (path.length < 2) continue;
@@ -996,10 +770,7 @@
             function getPos(e) {
                 const rect = canvas.getBoundingClientRect();
                 const touch = e.touches ? e.touches[0] : e;
-                return {
-                    x: (touch.clientX - rect.left),
-                    y: (touch.clientY - rect.top),
-                };
+                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
             }
 
             function startDraw(e) {
@@ -1007,8 +778,6 @@
                 e.preventDefault();
                 isDrawing = true;
                 const pos = getPos(e);
-                lastX = pos.x;
-                lastY = pos.y;
                 drawHistory.push([{ x: pos.x, y: pos.y }]);
             }
 
@@ -1047,10 +816,7 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ============================================================
-            //  6. 像素比對 (F1-Score) 同前
-            // ============================================================
-
+            // ========== 6. 像素比對 (F1) ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -1060,15 +826,13 @@
                 off1.height = h;
                 const ctx1 = off1.getContext('2d');
                 ctx1.scale(dpr, dpr);
-                if (state.currentChar) {
-                    state.currentChar.drawOracle(ctx1, canvasW, canvasH);
-                }
+                if (state.currentChar) state.currentChar.drawOracle(ctx1, canvasW, canvasH);
                 const off2 = document.createElement('canvas');
                 off2.width = w;
                 off2.height = h;
                 const ctx2 = off2.getContext('2d');
                 ctx2.scale(dpr, dpr);
-                ctx2.strokeStyle = '#fff';
+                ctx2.strokeStyle = '#000';
                 ctx2.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx2.lineCap = 'round';
                 ctx2.lineJoin = 'round';
@@ -1076,9 +840,7 @@
                     if (path.length < 2) continue;
                     ctx2.beginPath();
                     ctx2.moveTo(path[0].x, path[0].y);
-                    for (let i = 1; i < path.length; i++) {
-                        ctx2.lineTo(path[i].x, path[i].y);
-                    }
+                    for (let i = 1; i < path.length; i++) ctx2.lineTo(path[i].x, path[i].y);
                     ctx2.stroke();
                 }
                 const data1 = ctx1.getImageData(0, 0, w, h).data;
@@ -1090,42 +852,31 @@
                 const threshold = 30;
                 for (let i = 0; i < data1.length; i += 4 * step) {
                     const idx = i / 4;
-                    const x = (idx % w);
-                    const y = Math.floor(idx / w);
+                    const x = (idx % w),
+                        y = Math.floor(idx / w);
                     if (x % step !== 0 || y % step !== 0) continue;
-                    const r1 = data1[i],
-                        g1 = data1[i + 1],
-                        b1 = data1[i + 2];
-                    const r2 = data2[i],
-                        g2 = data2[i + 1],
-                        b2 = data2[i + 2];
-                    const lum1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
-                    const lum2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
-                    const isFore1 = lum1 > threshold;
-                    const isFore2 = lum2 > threshold;
+                    const lum1 = 0.299 * data1[i] + 0.587 * data1[i + 1] + 0.114 * data1[i + 2];
+                    const lum2 = 0.299 * data2[i] + 0.587 * data2[i + 1] + 0.114 * data2[i + 2];
+                    const isFore1 = lum1 > threshold,
+                        isFore2 = lum2 > threshold;
                     if (isFore1 && isFore2) tp++;
                     else if (!isFore1 && isFore2) fp++;
                     else if (isFore1 && !isFore2) fn++;
                 }
                 if (tp + fp === 0 || tp + fn === 0) return 0;
-                const precision = tp / (tp + fp);
-                const recall = tp / (tp + fn);
+                const precision = tp / (tp + fp),
+                    recall = tp / (tp + fn);
                 if (precision + recall === 0) return 0;
-                const f1 = 2 * precision * recall / (precision + recall);
-                return Math.round(f1 * 100);
+                return Math.round(2 * precision * recall / (precision + recall) * 100);
             }
 
-            // ============================================================
-            //  7. 語音錄製 (AudioWorkletNode) 同前
-            // ============================================================
-
+            // ========== 7. 語音錄製 (Worklet 發送原始 PCM) ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
               super();
               this.buffer = [];
-              this.sampleRate = 16000;
-              this.chunkSize = 640;
+              this.chunkSize = 640; // 40ms at 16kHz
             }
             process(inputs, outputs, parameters) {
               const input = inputs[0];
@@ -1150,13 +901,8 @@
                   s = Math.max(-1, Math.min(1, s));
                   pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
-                const bytes = new Uint8Array(pcm.buffer);
-                let binary = '';
-                for (let i = 0; i < bytes.length; i++) {
-                  binary += String.fromCharCode(bytes[i]);
-                }
-                const b64 = btoa(binary);
-                this.port.postMessage({ type: 'audio', data: b64, len: pcm.length });
+                // 發送 ArrayBuffer
+                this.port.postMessage({ type: 'audio', buffer: pcm.buffer }, [pcm.buffer]);
               }
               return true;
             }
@@ -1173,22 +919,22 @@
                 return workletBlobURL;
             }
 
+            // ----- 主線程處理 -----
+            let audioContext = null,
+                audioWorkletNode = null,
+                mediaStream = null;
+            let isRecording = false;
+            let recordTimer = null;
+
             async function initAudio() {
                 try {
-                    if (state.audioContext && state.audioContext.state === 'running') {
-                        return true;
+                    if (audioContext && audioContext.state === 'running') return true;
+                    if (!audioContext) {
+                        audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
+                                .sampleRate });
                     }
-                    if (!state.audioContext) {
-                        state.audioContext = new(window.AudioContext || window.webkitAudioContext)({
-                            sampleRate: AUDIO_CONFIG.sampleRate,
-                        });
-                    }
-                    if (state.audioContext.state === 'suspended') {
-                        await state.audioContext.resume();
-                    }
-                    if (state.audioContext.state !== 'running') {
-                        throw new Error('音頻上下文未就緒');
-                    }
+                    if (audioContext.state === 'suspended') await audioContext.resume();
+                    if (audioContext.state !== 'running') throw new Error('音頻上下文未就緒');
                     return true;
                 } catch (e) {
                     console.error('音頻初始化失敗:', e);
@@ -1198,7 +944,7 @@
             }
 
             async function startRecording() {
-                if (state.isRecording) return;
+                if (isRecording) return;
                 if (state.phase !== 'voice') {
                     setStatus('⚠️ 請先通過符文驗證再唸咒', true);
                     return;
@@ -1206,8 +952,8 @@
                 try {
                     const ok = await initAudio();
                     if (!ok) return;
-                    if (!state.mediaStream) {
-                        state.mediaStream = await navigator.mediaDevices.getUserMedia({
+                    if (!mediaStream) {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({
                             audio: {
                                 echoCancellation: false,
                                 noiseSuppression: false,
@@ -1217,32 +963,35 @@
                             video: false,
                         });
                     }
-                    if (!state.audioWorkletNode) {
-                        await state.audioContext.audioWorklet.addModule(initWorklet());
-                        const source = state.audioContext.createMediaStreamSource(state.mediaStream);
-                        state.audioWorkletNode = new AudioWorkletNode(state.audioContext, 'pcm-processor');
-                        state.audioWorkletNode.port.onmessage = (e) => {
-                            if (e.data.type === 'audio') {
-                                if (state.isRecording && state.wsReady) {
-                                    sendAudioChunk(e.data.data, e.data.len);
+                    if (!audioWorkletNode) {
+                        await audioContext.audioWorklet.addModule(initWorklet());
+                        const source = audioContext.createMediaStreamSource(mediaStream);
+                        audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+                        audioWorkletNode.port.onmessage = (e) => {
+                            if (e.data.type === 'audio' && isRecording && state.wsReady) {
+                                // 將 ArrayBuffer 轉為 Base64
+                                const buffer = e.data.buffer;
+                                const bytes = new Uint8Array(buffer);
+                                let binary = '';
+                                for (let i = 0; i < bytes.length; i++) {
+                                    binary += String.fromCharCode(bytes[i]);
                                 }
+                                const b64 = btoa(binary);
+                                sendAudioChunk(b64);
                             }
                         };
-                        source.connect(state.audioWorkletNode);
-                        state.audioWorkletNode.connect(state.audioContext.destination);
+                        source.connect(audioWorkletNode);
+                        audioWorkletNode.connect(audioContext.destination);
                     }
-                    state.audioBuffer = [];
+                    isRecording = true;
                     state.isRecording = true;
-                    state.recordStartTime = Date.now();
                     btnVoice.textContent = '⏹️ 停止錄音';
                     btnVoice.classList.add('recording');
                     btnVoice.disabled = false;
                     setStatus('🎤 請大聲朗讀咒語 ... (最長 8 秒)', false);
-                    if (state.recordTimer) clearTimeout(state.recordTimer);
-                    state.recordTimer = setTimeout(() => {
-                        if (state.isRecording) {
-                            stopRecording(true);
-                        }
+                    if (recordTimer) clearTimeout(recordTimer);
+                    recordTimer = setTimeout(() => {
+                        if (isRecording) stopRecording(true);
                     }, AUDIO_CONFIG.maxRecordSeconds * 1000);
                     if (!state.wsReady) {
                         await connectWebSocket();
@@ -1255,21 +1004,14 @@
             }
 
             function stopRecording(auto = false) {
-                if (!state.isRecording) return;
+                if (!isRecording) return;
+                isRecording = false;
                 state.isRecording = false;
-                if (state.recordTimer) {
-                    clearTimeout(state.recordTimer);
-                    state.recordTimer = null;
-                }
-                if (state.wsReady) {
-                    sendAudioEnd();
-                }
+                if (recordTimer) { clearTimeout(recordTimer);
+                    recordTimer = null; }
+                if (state.wsReady) sendAudioEnd();
                 resetVoiceUI();
-                if (!auto) {
-                    setStatus('⏳ 等待咒語評測 ...', false);
-                } else {
-                    setStatus('⏳ 咒語已送出，請等候 ...', false);
-                }
+                setStatus(auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...', false);
             }
 
             function resetVoiceUI() {
@@ -1278,38 +1020,7 @@
                 btnVoice.disabled = (state.phase !== 'voice');
             }
 
-            function sendAudioChunk(b64Data, len) {
-                if (!state.wsReady || !state.wsConnection) return;
-                const payload = {
-                    cmd: 'auw',
-                    aus: state.audioBuffer.length === 0 ? 1 : 2,
-                    data: b64Data,
-                };
-                try {
-                    state.wsConnection.send(JSON.stringify(payload));
-                } catch (e) {
-                    console.warn('發送音訊失敗:', e);
-                }
-            }
-
-            function sendAudioEnd() {
-                if (!state.wsReady || !state.wsConnection) return;
-                const payload = {
-                    cmd: 'auw',
-                    aus: 4,
-                    data: '',
-                };
-                try {
-                    state.wsConnection.send(JSON.stringify(payload));
-                } catch (e) {
-                    console.warn('發送尾幀失敗:', e);
-                }
-            }
-
-            // ============================================================
-            //  8. 科大訊飛 WebSocket 連線 (使用真實憑證)
-            // ============================================================
-
+            // ========== 8. WebSocket 與訊飛 API ==========
             function buildWSSUrl() {
                 const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
                 const host = new URL(WSS_URL).host;
@@ -1329,9 +1040,7 @@
                     state.wsConnection = new WebSocket(url);
                     state.wsConnection.binaryType = 'blob';
                     return new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            reject(new Error('WSS 連線超時'));
-                        }, 10000);
+                        const timeout = setTimeout(() => reject(new Error('WSS 連線超時')), 10000);
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
@@ -1343,13 +1052,9 @@
                             console.error('WSS 錯誤:', err);
                             reject(err);
                         };
-                        state.wsConnection.onmessage = (e) => {
-                            handleWSMessage(e.data);
-                        };
-                        state.wsConnection.onclose = () => {
-                            state.wsReady = false;
-                            console.log('WSS 連線關閉');
-                        };
+                        state.wsConnection.onmessage = (e) => { handleWSMessage(e.data); };
+                        state.wsConnection.onclose = () => { state.wsReady = false;
+                            console.log('WSS 連線關閉'); };
                     });
                 } catch (e) {
                     console.error('WSS 連線失敗:', e);
@@ -1362,29 +1067,44 @@
                 if (!state.wsReady || !state.wsConnection) return;
                 const char = state.currentChar;
                 if (!char) return;
-                const text = char.char + '\n' + char.pinyin;
+                const text = char.char + '\n' + char.pinyinRaw;
                 const payload = {
                     cmd: 'ssb',
                     sub: 'ise',
-                    data: JSON.stringify({
+                    data: {
                         common: { app_id: XF_CONFIG.APPID },
                         business: {
                             category: 'read_syllable',
                             sub: 'ise',
                             ent: 'cn_vip',
-                            cmd: 'ssb',
                             auf: 'audio/L16;rate=16000',
                             aue: 'raw',
                             rst: 'plain',
                             text: text,
                         },
-                        data: {
-                            status: 0,
-                            data: '',
-                        },
-                    }),
+                        data: { status: 0, data: '' }
+                    }
                 };
                 state.wsConnection.send(JSON.stringify(payload));
+            }
+
+            function sendAudioChunk(b64Data) {
+                if (!state.wsReady || !state.wsConnection) return;
+                const payload = {
+                    cmd: 'auw',
+                    data: {
+                        aus: state.audioBuffer.length === 0 ? 1 : 2,
+                        data: b64Data
+                    }
+                };
+                state.audioBuffer.push(b64Data); // just for count
+                try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送音訊失敗:', e); }
+            }
+
+            function sendAudioEnd() {
+                if (!state.wsReady || !state.wsConnection) return;
+                const payload = { cmd: 'auw', data: { aus: 4, data: '' } };
+                try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送尾幀失敗:', e); }
             }
 
             function handleWSMessage(data) {
@@ -1392,17 +1112,12 @@
                     let text;
                     if (data instanceof Blob) {
                         const reader = new FileReader();
-                        reader.onload = () => {
-                            parseWSResult(reader.result);
-                        };
+                        reader.onload = () => parseWSResult(reader.result);
                         reader.readAsText(data);
                     } else {
-                        text = data;
-                        parseWSResult(text);
+                        parseWSResult(data);
                     }
-                } catch (e) {
-                    console.warn('解析 WSS 訊息失敗:', e);
-                }
+                } catch (e) { console.warn('解析 WSS 訊息失敗:', e); }
             }
 
             function parseWSResult(text) {
@@ -1419,13 +1134,9 @@
                         const decoder = new TextDecoder('utf-8');
                         const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
                         const score = extractScoreFromXML(xml);
-                        if (score !== null) {
-                            handleVoiceResult(score);
-                        }
+                        if (score !== null) handleVoiceResult(score);
                     }
-                } catch (e) {
-                    console.warn('解析結果失敗:', e);
-                }
+                } catch (e) { console.warn('解析結果失敗:', e); }
             }
 
             function extractScoreFromXML(xml) {
@@ -1434,18 +1145,12 @@
                 const match2 = xml.match(/<score>([\d.]+)<\/score>/i);
                 if (match2) return parseFloat(match2[1]);
                 const nums = xml.match(/\b([\d.]+)\b/g);
-                if (nums) {
-                    const last = nums[nums.length - 1];
-                    const val = parseFloat(last);
-                    if (val > 0 && val <= 100) return val;
-                }
+                if (nums) { const last = nums[nums.length - 1]; const val = parseFloat(last); if (val > 0 && val <= 100)
+                    return val; }
                 return null;
             }
 
-            // ============================================================
-            //  9. 語音結果處理
-            // ============================================================
-
+            // ========== 9. 語音結果處理 ==========
             function handleVoiceResult(score) {
                 state.voiceScore = Math.round(score);
                 if (state.voiceScore >= THRESHOLDS.voicePass) {
@@ -1460,10 +1165,7 @@
                 }
             }
 
-            // ============================================================
-            //  10. 妖怪現形
-            // ============================================================
-
+            // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
@@ -1483,25 +1185,19 @@
                 updateScoreBadge(`✨ 靈力 ${state.drawScore}/${state.voiceScore}`);
             }
 
-            // ============================================================
-            //  11. 核心流程控制
-            // ============================================================
-
+            // ========== 11. 流程控制 ==========
             function resetForNewChar() {
                 closeWS();
+                isRecording = false;
                 state.isRecording = false;
-                state.isVerifying = false;
-                state.isVoiceProcessing = false;
                 state.audioBuffer = [];
                 state.drawScore = 0;
                 state.voiceScore = 0;
                 state.canvasLocked = false;
                 state.phase = 'draw';
                 state.wsReady = false;
-                if (state.recordTimer) {
-                    clearTimeout(state.recordTimer);
-                    state.recordTimer = null;
-                }
+                if (recordTimer) { clearTimeout(recordTimer);
+                    recordTimer = null; }
                 drawHistory = [];
                 renderOracle();
                 revealArea.classList.remove('show');
@@ -1520,10 +1216,7 @@
                 updateScoreBadge('靈力 · 待啟動');
             }
 
-            function pickRandomChar() {
-                const idx = Math.floor(Math.random() * CHARACTERS.length);
-                return CHARACTERS[idx];
-            }
+            function pickRandomChar() { return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]; }
 
             function initLevel() {
                 resetForNewChar();
@@ -1538,10 +1231,7 @@
 
             function handleVerify() {
                 if (state.isVerifying || state.phase === 'reveal') return;
-                if (state.canvasLocked) {
-                    setStatus('⚠️ 符文已驗證通過，請進行唸咒', true);
-                    return;
-                }
+                if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
                 if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
                     setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
                     return;
@@ -1558,15 +1248,13 @@
                         state.canvasLocked = true;
                         state.phase = 'voice';
                         setStatus(`✅ 符文契合度 ${score}分！ 咒語已解鎖`, false);
-                        pinyinDisplay.textContent = state.currentChar.pinyin;
+                        pinyinDisplay.textContent = state.currentChar.pinyinTone;
                         pinyinDisplay.style.display = 'block';
-                        setTimeout(() => {
-                            pinyinDisplay.classList.add('show');
-                        }, 50);
+                        setTimeout(() => pinyinDisplay.classList.add('show'), 50);
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
                         updateScoreBadge(`✅ 符文 ${score}分 · 請唸咒`);
-                        setStatus(`🗣️ 請唸出咒語：<span class="highlight">${state.currentChar.pinyin}</span>`, false);
+                        setStatus(`🗣️ 請唸出咒語：<span class="highlight">${state.currentChar.pinyinTone}</span>`, false);
                     } else {
                         setStatus(`❌ 符文契合度 ${score}分，再努力描寫！ (需 ≥ ${THRESHOLDS.drawPass}分)`, true);
                         updateScoreBadge(`❌ ${score}分 · 未過關`);
@@ -1581,54 +1269,28 @@
                 setStatus('✍️ 已清除，重新描寫', false);
             }
 
-            function handleNext() {
-                initLevel();
-            }
+            function handleNext() { initLevel(); }
 
             function handleVoiceToggle() {
-                if (state.phase !== 'voice') {
-                    setStatus('⚠️ 請先通過符文驗證', true);
-                    return;
-                }
-                if (state.isRecording) {
-                    stopRecording(false);
-                } else {
-                    startRecording();
-                }
+                if (state.phase !== 'voice') { setStatus('⚠️ 請先通過符文驗證', true); return; }
+                if (isRecording) stopRecording(false);
+                else startRecording();
             }
 
-            // ============================================================
-            //  12. 輔助函數
-            // ============================================================
-
+            // ========== 12. 輔助 ==========
             function setStatus(html, isError = false) {
                 statusText.innerHTML = html;
-                statusText.style.color = isError ? '#ff7a7a' : '#f0e6c5';
-                if (isError) {
-                    statusText.style.textShadow = '0 0 30px rgba(255,70,70,0.15)';
-                } else {
-                    statusText.style.textShadow = '0 0 20px rgba(255,215,100,0.05)';
-                }
+                statusText.style.color = isError ? '#a94442' : '#3a2e1e';
             }
 
-            function updateScoreBadge(text) {
-                scoreBadge.textContent = text;
-            }
+            function updateScoreBadge(text) { scoreBadge.textContent = text; }
 
             function closeWS() {
-                if (state.wsConnection) {
-                    try {
-                        state.wsConnection.close();
-                    } catch (e) {}
-                    state.wsConnection = null;
-                }
+                if (state.wsConnection) { try { state.wsConnection.close(); } catch (e) {} state.wsConnection = null; }
                 state.wsReady = false;
             }
 
-            // ============================================================
-            //  13. 初始化
-            // ============================================================
-
+            // ========== 13. 初始化 ==========
             function init() {
                 resizeCanvas();
                 bindCanvasEvents();
@@ -1639,30 +1301,19 @@
                 let resizeTimer;
                 window.addEventListener('resize', () => {
                     clearTimeout(resizeTimer);
-                    resizeTimer = setTimeout(() => {
-                        resizeCanvas();
-                    }, 200);
+                    resizeTimer = setTimeout(resizeCanvas, 200);
                 });
                 initLevel();
-                setTimeout(() => {
-                    loadingOverlay.classList.add('hidden');
-                }, 600);
+                setTimeout(() => loadingOverlay.classList.add('hidden'), 600);
                 document.addEventListener('touchstart', () => {
-                    if (state.audioContext && state.audioContext.state === 'suspended') {
-                        state.audioContext.resume().catch(() => {});
-                    }
+                    if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (真實 API 模式)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (淺色主題 + 聲調拼音)');
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+            else init();
         })();
     </script>
-
 </body>
 </html>
