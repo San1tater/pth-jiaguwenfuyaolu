@@ -498,6 +498,8 @@
                 recordStartTime: 0,
                 minDurationTimer: null,
                 isFinalizing: false,
+                flushResolve: null, // 用于 flush 异步等待
+                isFlushing: false,
             };
 
             // ========== 4. DOM ==========
@@ -693,7 +695,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) ==========
+            // ========== 7. 語音錄製 (Worklet) — 支援 flush ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -701,6 +703,38 @@
               this.buffer = [];
               this.chunkSize = 640;
               this.running = true;
+              this.port.onmessage = (e) => {
+                if (e.data.type === 'flush') {
+                  this.flushBuffer();
+                }
+              };
+            }
+            flushBuffer() {
+              if (this.buffer.length === 0) {
+                this.port.postMessage({ type: 'flushed' });
+                return;
+              }
+              // 合并所有数据
+              let totalLen = 0;
+              for (const chunk of this.buffer) totalLen += chunk.length;
+              const merged = new Float32Array(totalLen);
+              let offset = 0;
+              for (const chunk of this.buffer) {
+                merged.set(chunk, offset);
+                offset += chunk.length;
+              }
+              this.buffer = [];
+              // 转换为 PCM
+              const pcm = new Int16Array(merged.length);
+              for (let i = 0; i < merged.length; i++) {
+                let s = merged[i];
+                s = Math.max(-1, Math.min(1, s));
+                pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+              }
+              // 发送音频数据
+              this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: true }, [pcm.buffer]);
+              // 通知刷新完成
+              this.port.postMessage({ type: 'flushed' });
             }
             process(inputs, outputs, parameters) {
               if (!this.running) return false;
@@ -730,7 +764,7 @@
                   s = Math.max(-1, Math.min(1, s));
                   pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
-                this.port.postMessage({ type: 'audio', buffer: pcm.buffer }, [pcm.buffer]);
+                this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: false }, [pcm.buffer]);
               }
               return true;
             }
@@ -755,7 +789,7 @@
             let sourceNode = null;
 
             // ---------- 音頻發送 ----------
-            function sendAudioChunk(b64Data) {
+            function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
                     return;
@@ -768,7 +802,7 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}`);
+                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
                 } catch (e) {
                     console.error('發送音訊幀失敗:', e);
                 }
@@ -832,6 +866,7 @@
                         await audioContext.audioWorklet.addModule(initWorklet());
                         sourceNode = audioContext.createMediaStreamSource(mediaStream);
                         audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+                        // 监听 Worklet 消息
                         audioWorkletNode.port.onmessage = (e) => {
                             if (e.data.type === 'audio' && isRecording && state.wsReady) {
                                 const buffer = e.data.buffer;
@@ -841,7 +876,15 @@
                                     binary += String.fromCharCode(bytes[i]);
                                 }
                                 const b64 = btoa(binary);
-                                sendAudioChunk(b64);
+                                sendAudioChunk(b64, e.data.isFlush || false);
+                            }
+                            // 处理 flush 完成
+                            if (e.data.type === 'flushed') {
+                                console.log('[Worklet] flush 完成');
+                                if (state.flushResolve) {
+                                    state.flushResolve();
+                                    state.flushResolve = null;
+                                }
                             }
                         };
                         sourceNode.connect(audioWorkletNode);
@@ -870,81 +913,108 @@
                 }
             }
 
-            // ---------- 停止錄音（核心修改：保證最短時長） ----------
+            // ---------- 停止錄音（核心修改） ----------
             function stopRecording(auto = false) {
                 if (!isRecording) return;
-                if (state.isFinalizing) return; // 避免重複
+                if (state.isFinalizing) return;
 
-                // 計算已錄音時長
+                // 计算已录音时长
                 const elapsed = Date.now() - state.recordStartTime;
                 const remaining = MIN_RECORD_DURATION - elapsed;
 
-                if (remaining > 0) {
-                    // 時長不足，延遲真正停止
-                    console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
-                    // 立即更新 UI 為等待狀態
-                    isRecording = false;
-                    state.isRecording = false;
-                    btnVoice.disabled = true;
-                    btnVoice.textContent = '⏳ 處理中...';
-                    btnVoice.classList.remove('recording');
-                    setStatus('⏳ 咒語已送出，請等候 ...', false);
+                // 立即标记为停止中，但保持 isRecording 为 true，以便继续接收数据
+                state.isFinalizing = true;
+                btnVoice.disabled = true;
+                btnVoice.textContent = '⏳ 處理中...';
+                btnVoice.classList.remove('recording');
+                setStatus('⏳ 咒語已送出，請等候 ...', false);
 
-                    // 設置定時器，在剩餘時間後真正執行停止
+                // 如果时长不足，延后执行真正的停止
+                if (remaining > 0) {
+                    console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
                     if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = setTimeout(() => {
                         state.minDurationTimer = null;
                         finalizeStop();
                     }, remaining);
                 } else {
-                    // 時長足夠，立即停止
                     finalizeStop();
                 }
             }
 
-            // ---------- 最終停止（發送尾幀，斷開資源） ----------
+            // ---------- 最终停止（断开、flush、发送尾帧） ----------
             function finalizeStop() {
-                if (state.isFinalizing) return;
-                state.isFinalizing = true;
+                if (state.isFlushing) return; // 防止重复执行
+                state.isFlushing = true;
 
-                // 標記錄音已停止，不再接收新數據
-                isRecording = false;
-                state.isRecording = false;
-                if (recordTimer) { clearTimeout(recordTimer);
-                    recordTimer = null; }
-
-                // 斷開 source，停止採集
+                // 断开麦克风输入，不再有新数据
                 if (sourceNode) {
                     try {
                         sourceNode.disconnect();
                         sourceNode = null;
+                        console.log('[錄音] sourceNode 已斷開');
                     } catch (e) {}
                 }
 
-                // 等待一個短時間讓 Worklet 處理完剩餘緩衝區（自然 flush）
-                const waitFlush = () => {
-                    // 發送尾幀
+                // 取消定时器
+                if (recordTimer) { clearTimeout(recordTimer);
+                    recordTimer = null; }
+                if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
+                    state.minDurationTimer = null; }
+
+                // 向 Worklet 发送 flush 指令，强制发送剩余缓冲区数据
+                if (audioWorkletNode) {
+                    console.log('[Worklet] 發送 flush 指令');
+                    audioWorkletNode.port.postMessage({ type: 'flush' });
+
+                    // 等待 flush 完成，然后发送尾帧
+                    const flushPromise = new Promise((resolve) => {
+                        state.flushResolve = resolve;
+                        // 超时保护，防止 Worklet 无响应
+                        setTimeout(() => {
+                            if (state.flushResolve) {
+                                console.warn('[Worklet] flush 超時，強制繼續');
+                                state.flushResolve();
+                                state.flushResolve = null;
+                            }
+                        }, 300);
+                    });
+
+                    flushPromise.then(() => {
+                        // 刷新完成，发送尾帧
+                        if (state.wsReady) {
+                            sendAudioEnd();
+                        } else {
+                            console.warn('WS未就緒，無法發送尾幀');
+                        }
+                        // 断开 Worklet
+                        if (audioWorkletNode) {
+                            try {
+                                audioWorkletNode.disconnect();
+                                audioWorkletNode = null;
+                            } catch (e) {}
+                        }
+                        // 重置状态
+                        isRecording = false;
+                        state.isRecording = false;
+                        state.isFinalizing = false;
+                        state.isFlushing = false;
+                        resetVoiceUI();
+                        setStatus('⏳ 等待咒語評測 ...', false);
+                        console.log('[錄音] 已停止，等待服務器響應');
+                    });
+                } else {
+                    // 无 Worklet，直接发送尾帧
                     if (state.wsReady) {
                         sendAudioEnd();
-                    } else {
-                        console.warn('WS未就緒，無法發送尾幀');
                     }
-                    // 斷開 Worklet
-                    if (audioWorkletNode) {
-                        try {
-                            audioWorkletNode.disconnect();
-                            audioWorkletNode = null;
-                        } catch (e) {}
-                    }
-                    // 重置 UI
+                    isRecording = false;
+                    state.isRecording = false;
+                    state.isFinalizing = false;
+                    state.isFlushing = false;
                     resetVoiceUI();
                     setStatus('⏳ 等待咒語評測 ...', false);
-                    console.log('[錄音] 已停止，等待服務器響應');
-                    state.isFinalizing = false;
-                };
-
-                // 為了安全，給 Worklet 一點時間處理剩餘數據，然後發送尾幀
-                setTimeout(waitFlush, 100);
+                }
             }
 
             function resetVoiceUI() {
@@ -956,6 +1026,7 @@
                     state.minDurationTimer = null;
                 }
                 state.isFinalizing = false;
+                state.isFlushing = false;
             }
 
             // ========== 8. WebSocket 與訊飛 API ==========
@@ -1173,6 +1244,7 @@
                     sourceNode = null;
                 }
                 state.isFinalizing = false;
+                state.isFlushing = false;
                 drawHistory = [];
                 renderOracle();
                 revealArea.classList.remove('show');
@@ -1339,7 +1411,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (強制最短錄音時長 1 秒)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (徹底修復數據丟失)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
