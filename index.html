@@ -3,17 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 真正修復版</title>
+    <title>甲骨文伏妖錄 - 最終修復版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* 同前，略 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', '標楷體', Arial, sans-serif;
+            width: 100vw; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: row;
+            background-color: #1a1a1d; color: #ecf0f1;
+        }
+        
+        #left-panel {
+            width: 50%; height: 100%;
+            background-color: #f4ebd8; color: #333;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            border-right: 4px solid #8b7355; position: relative;
+        }
+
+        #prompt-area {
+            height: 100px; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-end;
+            margin-bottom: 20px; text-align: center;
+        }
+        #pinyin-display {
+            font-size: 40px; font-family: Arial, sans-serif;
+            color: #c0392b; font-weight: bold; opacity: 0;
+            transition: opacity 0.5s; letter-spacing: 2px;
+        }
+        #instruction-text {
+            font-size: 22px; color: #5a4634; font-weight: bold;
+            margin-top: 10px; background: rgba(255,255,255,0.6);
+            padding: 5px 15px; border-radius: 8px;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        #canvas-container {
+            width: 350px; height: 350px; position: relative;
+            background-color: #fff; border: 4px dashed #a68b6a;
+            border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            touch-action: none;
+        }
+        #trace-guide {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.15; pointer-events: none;
+        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
+
+        .controls { margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        button {
+            padding: 12px 20px; font-size: 18px; font-weight: bold;
+            cursor: pointer; background-color: #5a4634; color: white;
+            border: none; border-radius: 8px; transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
+        button:disabled { background-color: #bdc3c7; color: #7f8c8d; cursor: not-allowed; box-shadow: none; }
+        
+        #recordBtn { background-color: #c0392b; transition: all 0.3s ease; }
+        #recordBtn:hover:not(:disabled) { background-color: #922b21; }
+        #nextBtn { background-color: #27ae60; display: none; }
+
+        .recording-pulse {
+            background-color: #e74c3c !important;
+            animation: pulse-glow 1.5s infinite;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        #right-panel {
+            width: 50%; height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: radial-gradient(circle, #34495e 0%, #1a1a1d 80%);
+            position: relative;
+        }
+
+        #monster-container {
+            display: flex; flex-direction: column; align-items: center;
+            opacity: 0; transform: scale(0.5); transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #monster-container.revealed { opacity: 1; transform: scale(1); }
+
+        #modern-char {
+            font-family: 'BiauKai', '標楷體', serif; font-size: 160px;
+            color: #f1c40f; text-shadow: 0 0 20px rgba(241, 196, 15, 0.5); margin-bottom: 20px;
+        }
+        #monster-pic {
+            font-size: 180px; line-height: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,0.4));
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
+
+        #magic-circle {
+            position: absolute; width: 500px; height: 500px;
+            border: 2px dashed rgba(241, 196, 15, 0.2); border-radius: 50%;
+            animation: spin 30s linear infinite; pointer-events: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <!-- 同前，略 -->
+
+    <div id="left-panel">
+        <div id="prompt-area">
+            <div id="pinyin-display"></div>
+            <div id="instruction-text">請描寫下方的甲骨文字形</div>
+        </div>
+        
+        <div id="canvas-container">
+            <img id="trace-guide" src="" alt="甲骨文底圖">
+            <canvas id="writeCanvas" width="350" height="350"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="clearBtn" onclick="clearCanvas()">清除重寫</button>
+            <button id="checkBtn" onclick="checkWriting()">驗證符文</button>
+            <button id="recordBtn" onclick="toggleRecording()" disabled>🎙️ 唸咒</button>
+            <button id="nextBtn" onclick="initGame()">尋找下個妖怪</button>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <div id="magic-circle"></div>
+        <div id="monster-container">
+            <div id="modern-char"></div>
+            <div id="monster-pic"></div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
-        // 1. 配置與字庫
+        // 1. 配置與字庫 (請將密鑰移至服務端，此處僅示範)
         // ==========================================
         const XF_APPID = '2600b137';
         const XF_API_KEY = '8b012124ed213c06974cd469f29e134b';
@@ -64,7 +188,7 @@
         }
 
         // ==========================================
-        // 2. 畫布邏輯（同前）
+        // 2. 畫布邏輯
         // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -380,7 +504,6 @@
                 const res = JSON.parse(e.data);
                 if (res.code !== 0) {
                     console.error("[WS] 伺服器錯誤:", res);
-                    // 如果是超时，友好提示
                     if (res.code === 60114) {
                         instructionEl.innerText = "⏱️ 錄音超時，請再試一次";
                     } else {
