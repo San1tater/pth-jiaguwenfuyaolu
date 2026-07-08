@@ -3,22 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 最終完整版</title>
+    <title>甲骨文伏妖錄 - 深度除錯版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Helvetica Neue', '標楷體', Arial, sans-serif;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: row;
-            background-color: #1a1a1d;
-            color: #ecf0f1;
+            width: 100vw; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: row;
+            background-color: #1a1a1d; color: #ecf0f1;
         }
         
-        /* 左側面板：描紅與控制區 */
         #left-panel {
             width: 50%; height: 100%;
             background-color: #f4ebd8; color: #333;
@@ -50,17 +45,11 @@
             touch-action: none;
         }
         #trace-guide {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; opacity: 0.15; pointer-events: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.15; pointer-events: none;
         }
-        canvas {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; cursor: crosshair;
-        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
 
-        .controls {
-            margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
-        }
+        .controls { margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
         button {
             padding: 12px 20px; font-size: 18px; font-weight: bold;
             cursor: pointer; background-color: #5a4634; color: white;
@@ -74,7 +63,6 @@
         #recordBtn:hover:not(:disabled) { background-color: #922b21; }
         #nextBtn { background-color: #27ae60; display: none; }
 
-        /* 錄音中閃爍動畫 */
         .recording-pulse {
             background-color: #e74c3c !important;
             animation: pulse-glow 1.5s infinite;
@@ -85,7 +73,6 @@
             100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
         }
 
-        /* 右側面板：展示區 */
         #right-panel {
             width: 50%; height: 100%; display: flex; flex-direction: column;
             align-items: center; justify-content: center;
@@ -95,8 +82,7 @@
 
         #monster-container {
             display: flex; flex-direction: column; align-items: center;
-            opacity: 0; transform: scale(0.5);
-            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0; transform: scale(0.5); transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #monster-container.revealed { opacity: 1; transform: scale(1); }
 
@@ -108,7 +94,6 @@
             font-size: 180px; line-height: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,0.4));
             animation: float 3s ease-in-out infinite;
         }
-
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
 
         #magic-circle {
@@ -159,10 +144,7 @@
 
         const dictionary = [
             { char: '羊', pinyin: 'yáng', emoji: '🐑', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L50,80 M20,30 L80,30 M30,50 L70,50 M30,20 L50,40 L70,20 M30,70 L70,70" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '牛', pinyin: 'niú', emoji: '🐮', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,20 C40,40 60,40 80,20 M50,30 L50,90 M30,60 L70,60" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '鳥', pinyin: 'niǎo', emoji: '🐦', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,40 C30,20 50,20 50,20 L60,30 C80,30 90,50 90,50 C90,50 60,70 50,70 C30,70 30,50 30,40 Z M30,40 L15,45 L30,50 M60,70 L55,90 M70,65 L70,90 M45,35 A3,3 0 1,1 45.1,35" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '魚', pinyin: 'yú', emoji: '🐟', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L80,50 L50,80 L20,50 Z M20,50 L50,50 M80,20 L80,80 L65,50 Z M40,35 L45,35 M40,65 L45,65" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' }
+            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' }
         ];
 
         let currentTarget = null;
@@ -171,6 +153,7 @@
         const pinyinEl = document.getElementById('pinyin-display');
 
         function initGame() {
+            console.log("[GAME] 初始化遊戲");
             currentTarget = dictionary[Math.floor(Math.random() * dictionary.length)];
             isTracingPassed = false;
             clearCanvas();
@@ -186,7 +169,7 @@
         }
 
         // ==========================================
-        // 2. 畫布邏輯 (包含描紅符合度計算)
+        // 2. 畫布邏輯 (簡化省略，專注語音)
         // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -202,78 +185,20 @@
         function startDrawing(e) { if(isTracingPassed) return; e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x + 0.1, pos.y + 0.1); ctx.stroke(); }
         function draw(e) { if (!isDrawing || isTracingPassed) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
         function stopDrawing() { isDrawing = false; }
-        
-        canvas.addEventListener('pointerdown', startDrawing); canvas.addEventListener('pointermove', draw); 
-        canvas.addEventListener('pointerup', stopDrawing); canvas.addEventListener('pointerout', stopDrawing); 
-        canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw); 
-        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('pointerdown', startDrawing); canvas.addEventListener('pointermove', draw); canvas.addEventListener('pointerup', stopDrawing); canvas.addEventListener('pointerout', stopDrawing); canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', stopDrawing);
 
-        function clearCanvas() { 
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            ctx.beginPath(); 
-            isTracingPassed = false; 
-            pinyinEl.style.opacity = 0; 
-            instructionEl.innerText = "請描寫下方的甲骨文字形"; 
-            document.getElementById('checkBtn').style.display = 'inline-block'; 
-            document.getElementById('recordBtn').disabled = true; 
-        }
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); isTracingPassed = false; pinyinEl.style.opacity = 0; instructionEl.innerText = "請描寫下方的甲骨文字形"; document.getElementById('checkBtn').style.display = 'inline-block'; document.getElementById('recordBtn').disabled = true; }
         
         async function checkWriting() {
-            instructionEl.innerText = "正在鑑定符文...";
-            const score = await calculateTracingScore();
-            if (score >= 60) {
-                isTracingPassed = true; 
-                instructionEl.innerText = "符文生效！準備好後點擊唸咒按鈕";
-                pinyinEl.style.opacity = 1; 
-                document.getElementById('checkBtn').style.display = 'none';
-                document.getElementById('recordBtn').disabled = false;
-            } else {
-                instructionEl.innerText = `符合度：${score}分。畫得不像，請清除重試！`;
-            }
-        }
-
-        function calculateTracingScore() {
-            return new Promise((resolve) => {
-                const w = canvas.width; const h = canvas.height;
-                const hCanvas = document.createElement('canvas'); hCanvas.width = w; hCanvas.height = h;
-                const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
-
-                const getSvgPixels = (widthSetting) => {
-                    return new Promise((res) => {
-                        hCtx.clearRect(0, 0, w, h);
-                        const img = new Image();
-                        img.onload = () => { hCtx.drawImage(img, 0, 0, w, h); res(hCtx.getImageData(0, 0, w, h).data); };
-                        const modSvg = currentTarget.svg.replace(/stroke="%23[0-9a-fA-F]+"/g, 'stroke="black"').replace(/stroke-width="\d+"/g, `stroke-width="${widthSetting}"`);
-                        img.src = modSvg;
-                    });
-                };
-
-                (async () => {
-                    const expectedData = await getSvgPixels(BRUSH_SIZE);
-                    const toleranceData = await getSvgPixels(40);
-                    const userData = ctx.getImageData(0, 0, w, h).data;
-                    let expectedPixels = 0, userPixels = 0, validUserPixels = 0;
-
-                    for (let i = 3; i < userData.length; i += 4) {
-                        if (expectedData[i] > 50) expectedPixels++;
-                        if (userData[i] > 50) {
-                            userPixels++;
-                            if (toleranceData[i] > 50) validUserPixels++;
-                        }
-                    }
-
-                    if (userPixels === 0) return resolve(0);
-                    const precision = validUserPixels / userPixels; 
-                    const coverage = Math.min(1.0, validUserPixels / (expectedPixels * 0.7)); 
-                    let score = 0;
-                    if (precision > 0 && coverage > 0) score = 2 * (precision * coverage) / (precision + coverage);
-                    resolve(Math.round(score * 100));
-                })();
-            });
+            console.log("[GAME] 驗證符文 (為了方便測試語音，此處直接放行)");
+            isTracingPassed = true; 
+            instructionEl.innerText = "符文生效！準備好後點擊唸咒按鈕";
+            pinyinEl.style.opacity = 1; document.getElementById('checkBtn').style.display = 'none';
+            document.getElementById('recordBtn').disabled = false;
         }
 
         // ==========================================
-        // 3. 語音評測 (完整修復編碼與防點擊崩潰)
+        // 3. 語音評測 (深度除錯與安全防護)
         // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
         let currentWs = null;
@@ -290,20 +215,14 @@
             return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
         }
 
-        // 核心修復一：使用 TextEncoder 強制添加 UTF-8 BOM 避免 0分(dp_message="16")
         function getValidXunfeiText(char) {
             const encoder = new TextEncoder();
             const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
             const textBytes = encoder.encode(char);
-            
             const combined = new Uint8Array(bom.length + textBytes.length);
-            combined.set(bom, 0);
-            combined.set(textBytes, bom.length);
-            
+            combined.set(bom, 0); combined.set(textBytes, bom.length);
             let binary = '';
-            for (let i = 0; i < combined.byteLength; i++) {
-                binary += String.fromCharCode(combined[i]);
-            }
+            for (let i = 0; i < combined.byteLength; i++) { binary += String.fromCharCode(combined[i]); }
             return window.btoa(binary);
         }
 
@@ -337,13 +256,24 @@
             `;
             const blob = new Blob([workletCode], { type: 'application/javascript' });
             const workletUrl = URL.createObjectURL(blob);
-            await audioContext.audioWorklet.addModule(workletUrl);
+            
+            console.log("[AUDIO] 嘗試載入 AudioWorklet...");
+            try {
+                await audioContext.audioWorklet.addModule(workletUrl);
+                console.log("[AUDIO] AudioWorklet 載入成功");
+                return true;
+            } catch (err) {
+                console.error("[AUDIO] 致命錯誤：AudioWorklet 載入失敗！(AbortError)", err);
+                return false;
+            }
         }
 
         async function toggleRecording() {
             if (isRecording) {
+                console.log("[USER] 點擊 [停止錄音]");
                 stopRecordingAndAssess();
             } else {
+                console.log("[USER] 點擊 [開始錄音]");
                 await startVoiceEvaluation();
             }
         }
@@ -354,8 +284,9 @@
 
             try { 
                 mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); 
+                console.log("[AUDIO] 麥克風取得成功", mediaStream);
             } catch (e) {
-                console.error("麥克風授權失敗", e);
+                console.error("[AUDIO] 麥克風取得失敗", e);
                 instructionEl.innerText = "❌ 麥克風授權失敗！";
                 return;
             }
@@ -365,17 +296,23 @@
             btn.classList.add('recording-pulse');
             instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」，讀完點擊停止`;
             
-            currentWs = new WebSocket(getIseAuthUrl());
+            const wsUrl = getIseAuthUrl();
+            console.log("[WS] 開始連線...", wsUrl);
+            currentWs = new WebSocket(wsUrl);
             let isFirstAudioFrame = true;
+            let audioChunkCount = 0;
 
             currentWs.onopen = async () => {
-                // 核心修復二：防呆，若 WebSocket 連上時使用者已經點擊了停止，則直接中斷。
-                if (!isRecording || !mediaStream) {
+                console.log("[WS] 連線成功！");
+                
+                // 防護 1: 使用者可能在 WS 連線期間點擊了停止
+                if (!isRecording) {
+                    console.warn("[WS] 使用者已提前停止，放棄初始化");
                     if (currentWs) currentWs.close();
                     return; 
                 }
 
-                currentWs.send(JSON.stringify({
+                const payload = {
                     common: { app_id: XF_APPID },
                     business: { 
                         sub: "ise", cmd: "ssb", category: "read_syllable", 
@@ -383,66 +320,101 @@
                         text: getValidXunfeiText(currentTarget.char)
                     },
                     data: { status: 0, data: "" }
-                }));
+                };
+                console.log("[WS] 發送首幀 (status=0):", payload);
+                currentWs.send(JSON.stringify(payload));
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioContext.state === 'suspended') {
+                    console.log("[AUDIO] 喚醒 AudioContext...");
                     await audioContext.resume();
                 }
 
-                await initAudioWorklet();
+                const workletSuccess = await initAudioWorklet();
+                if (!workletSuccess) {
+                    instructionEl.innerText = "瀏覽器不支援或封鎖了語音模組";
+                    forceResetRecording();
+                    return;
+                }
                 
-                // 再次防呆
-                if (!isRecording || !mediaStream) return;
+                // 防護 2: 確認 mediaStream 仍然有效，避免 TypeError
+                if (!mediaStream || !mediaStream.active) {
+                    console.error("[AUDIO] mediaStream 無效或已被清空！");
+                    forceResetRecording();
+                    return;
+                }
                 
-                const source = audioContext.createMediaStreamSource(mediaStream);
-                audioWorkletNode = new AudioWorkletNode(audioContext, 'ise-recorder');
-                
-                audioWorkletNode.port.onmessage = (e) => {
-                    if (!currentWs || currentWs.readyState !== WebSocket.OPEN || !isRecording) return;
+                try {
+                    const source = audioContext.createMediaStreamSource(mediaStream);
+                    audioWorkletNode = new AudioWorkletNode(audioContext, 'ise-recorder');
                     
-                    const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
-                    const pcm = new Int16Array(downsampled.length);
-                    for (let i = 0; i < downsampled.length; i++) {
-                        let s = Math.max(-1, Math.min(1, downsampled[i]));
-                        pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                    }
-                    let binary = ''; const bytes = new Uint8Array(pcm.buffer);
-                    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-                    const base64Audio = window.btoa(binary);
-                    
-                    currentWs.send(JSON.stringify({ 
-                        business: { cmd: "auw", aus: isFirstAudioFrame ? 1 : 2 },
-                        data: { status: 1, data: base64Audio } 
-                    }));
-                    
-                    isFirstAudioFrame = false;
-                };
+                    audioWorkletNode.port.onmessage = (e) => {
+                        if (!currentWs || currentWs.readyState !== WebSocket.OPEN || !isRecording) return;
+                        
+                        const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
+                        
+                        // 計算音量供除錯使用
+                        let sum = 0;
+                        for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
+                        if (audioChunkCount % 10 === 0) {
+                            console.log(`[AUDIO] 傳輸 Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}, aus: ${isFirstAudioFrame ? 1 : 2}`);
+                        }
+                        audioChunkCount++;
 
-                source.connect(audioWorkletNode);
-                audioWorkletNode.connect(audioContext.destination); 
-                
-                // 極限保護：8 秒後自動停止
-                stopTimeout = setTimeout(() => { stopRecordingAndAssess(); }, 8000); 
+                        const pcm = new Int16Array(downsampled.length);
+                        for (let i = 0; i < downsampled.length; i++) {
+                            let s = Math.max(-1, Math.min(1, downsampled[i]));
+                            pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        }
+                        let binary = ''; const bytes = new Uint8Array(pcm.buffer);
+                        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                        const base64Audio = window.btoa(binary);
+
+                        currentWs.send(JSON.stringify({ 
+                            business: { cmd: "auw", aus: isFirstAudioFrame ? 1 : 2 },
+                            data: { status: 1, data: base64Audio } 
+                        }));
+                        
+                        isFirstAudioFrame = false;
+                    };
+
+                    source.connect(audioWorkletNode);
+                    audioWorkletNode.connect(audioContext.destination); 
+                    console.log("[AUDIO] 錄音管道串接完成，開始傳輸！");
+
+                    // 8 秒極限保護
+                    stopTimeout = setTimeout(() => { 
+                        console.log("[USER] 8 秒超時，自動停止");
+                        stopRecordingAndAssess(); 
+                    }, 8000);
+
+                } catch (err) {
+                    console.error("[AUDIO] 建立音訊來源時發生錯誤:", err);
+                    forceResetRecording();
+                }
             };
 
             currentWs.onmessage = (e) => {
                 const res = JSON.parse(e.data);
                 if (res.code !== 0) {
+                    console.error("[WS] 伺服器回傳錯誤:", res);
                     instructionEl.innerText = `系統錯誤：${res.code}`;
                     forceResetRecording();
                     return;
                 }
                 
                 if (res.data && res.data.status === 2) {
+                    console.log("[WS] 收到最終評測結果 (status=2)");
                     try {
                         const binaryStr = window.atob(res.data.data);
                         const bytes = new Uint8Array(binaryStr.length);
                         for (let i = 0; i < binaryStr.length; i++) { bytes[i] = binaryStr.charCodeAt(i); }
                         const xmlStr = new TextDecoder("utf-8").decode(bytes);
                         
+                        console.log("========== 📋 訊飛回傳原始 XML ==========\n" + xmlStr + "\n========================================");
                         parseIseResult(xmlStr);
                     } catch (error) {
+                        console.error("[XML] Base64 解碼失敗:", error);
                         instructionEl.innerText = "資料解析錯誤，請重試";
                         forceResetRecording();
                     }
@@ -451,6 +423,7 @@
             };
             
             currentWs.onerror = (err) => {
+                console.error("[WS] WebSocket 連線異常:", err);
                 instructionEl.innerText = "連線失敗，請檢查網路或密鑰";
                 forceResetRecording();
             };
@@ -459,6 +432,7 @@
         function stopRecordingAndAssess() {
             if (!isRecording) return;
             isRecording = false;
+            console.log("[ACTION] 執行停止錄音並送出結算");
 
             const btn = document.getElementById('recordBtn');
             btn.classList.remove('recording-pulse');
@@ -469,9 +443,14 @@
 
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
-            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+            if (mediaStream) { 
+                mediaStream.getTracks().forEach(t => t.stop()); 
+                mediaStream = null; 
+                console.log("[AUDIO] 麥克風已釋放");
+            }
             
             if (currentWs && currentWs.readyState === WebSocket.OPEN) { 
+                console.log("[WS] 發送尾幀 (aus=4, status=2)");
                 currentWs.send(JSON.stringify({ 
                     business: { cmd: "auw", aus: 4 },
                     data: { status: 2, data: "" } 
@@ -480,6 +459,7 @@
         }
 
         function forceResetRecording() {
+            console.warn("[ACTION] 強制重置錄音狀態");
             isRecording = false;
             if (stopTimeout) clearTimeout(stopTimeout);
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
@@ -500,12 +480,22 @@
                 const readSyllable = xmlDoc.getElementsByTagName("read_syllable")[0];
                 
                 if (!readSyllable) {
+                    console.error("[XML] 找不到 <read_syllable> 節點");
                     instructionEl.innerText = "未找到評分結果";
                     btn.innerText = "🎙️ 唸咒"; btn.disabled = false;
                     return;
                 }
 
                 const score = parseFloat(readSyllable.getAttribute("total_score") || 0);
+                console.log(`[ISE] 最終得分: ${score}`);
+                
+                if (score === 0) {
+                    const sylls = xmlDoc.getElementsByTagName("syll");
+                    if (sylls.length > 0) {
+                        const dpMessage = sylls[0].getAttribute("dp_message");
+                        console.warn(`[ISE] 0分原因 (dp_message) = ${dpMessage} (16=漏讀/無聲, 128=錯讀)`);
+                    }
+                }
                 
                 if (score > 60) {
                     instructionEl.innerText = "✨ 咒語成功！妖怪現形了！";
@@ -516,6 +506,7 @@
                     btn.disabled = false;
                 }
             } catch (err) { 
+                console.error("[XML] 評測結果解析異常:", err);
                 instructionEl.innerText = "解析評測結果失敗"; 
                 btn.innerText = "🎙️ 唸咒";
                 btn.disabled = false;
