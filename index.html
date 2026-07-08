@@ -232,80 +232,81 @@
             background: radial-gradient(ellipse at 60% 40%, #faf5ee, #f0ebe3);
             position: relative;
             overflow: hidden;
-            padding: 2vh 2vw;
+            padding: 0;
+            /* 移除padding让内容填满 */
         }
-        #right-panel::before {
-            content: '✦';
-            position: absolute;
-            font-size: 50vh;
-            color: rgba(180, 150, 100, 0.06);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(0deg);
-            animation: spinArray 40s linear infinite;
-            pointer-events: none;
-            font-family: serif;
-        }
+        /* 移除鸟居图案 */
+        #right-panel::before,
         #right-panel::after {
-            content: '';
-            position: absolute;
-            top: 10%;
-            left: 10%;
-            width: 80%;
-            height: 80%;
-            border: 1px solid rgba(180, 150, 100, 0.08);
-            border-radius: 50%;
-            animation: spinArray 60s linear infinite reverse;
-            pointer-events: none;
-        }
-        @keyframes spinArray {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
+            display: none;
         }
 
+        /* 右側妖怪展示區 - 重新布局 */
         #reveal-area {
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 1.5vh;
+            justify-content: flex-start;
+            /* 从上到下排列 */
+            width: 100%;
+            height: 100%;
             z-index: 5;
             position: relative;
-            padding: 2vh 2vw;
+            padding: 1vh 2vw 0 2vw;
+            /* 上边距稍留空间 */
             animation: revealAppear 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-            width: 100%;
-            max-width: 500px;
         }
-        #reveal-area.show { display: flex; }
+        #reveal-area.show {
+            display: flex;
+        }
         @keyframes revealAppear {
             0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
             100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
+
+        /* 现代中文字 - 占上1/8 */
         #modern-char {
-            font-size: clamp(6rem, 16vh, 12rem);
+            font-size: clamp(3rem, 10vh, 8rem);
+            /* 适当缩小，因为空间变小 */
             font-weight: 700;
             color: #b8860b;
             text-shadow: 0 0 60px rgba(184, 134, 11, 0.3), 0 0 120px rgba(184, 134, 11, 0.1);
             letter-spacing: 0.1em;
-            line-height: 1;
+            line-height: 1.2;
+            flex: 0 0 12.5%;
+            /* 1/8 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             animation: charGlow 3s ease-in-out infinite alternate;
+            width: 100%;
         }
         @keyframes charGlow {
             0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
             100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
+
+        /* 妖怪图片 - 占下7/8 */
         #animal-image {
-            max-width: 70%;
-            max-height: 40vh;
+            flex: 0 0 87.5%;
+            /* 7/8 */
+            width: 100%;
+            height: auto;
+            max-height: 100%;
             object-fit: contain;
-            animation: floatAnimal 3.5s ease-in-out infinite;
+            /* 保持比例填满 */
+            mix-blend-mode: multiply;
+            /* 尝试去除白色背景 */
+            background: transparent;
             filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
+            animation: floatAnimal 3.5s ease-in-out infinite;
         }
         @keyframes floatAnimal {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-15px); }
         }
 
+        /* 佔位區（未現形）保持居中 */
         #placeholder-area {
             display: flex;
             flex-direction: column;
@@ -317,12 +318,18 @@
             letter-spacing: 0.2em;
             text-align: center;
             padding: 2vh;
+            width: 100%;
+            height: 100%;
         }
         #placeholder-area .symbol {
             font-size: clamp(4rem, 10vh, 8rem);
             opacity: 0.2;
             margin-bottom: 1vh;
             animation: spinArray 30s linear infinite;
+        }
+        @keyframes spinArray {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         #loading-overlay {
@@ -412,7 +419,7 @@
             const THRESHOLDS = { drawPass: 45 };
             const MIN_RECORD_DURATION = 1000;
 
-            // ========== 2. 字庫（增加 animalImg） ==========
+            // ========== 2. 字庫 ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -455,7 +462,7 @@
                 img: null,
             }];
 
-            // ========== 3. 同音字映射表（繁简覆盖） ==========
+            // ========== 3. 同音字映射 ==========
             function buildFullPinyinMap() {
                 const map = {};
                 const homophoneGroups = {
@@ -708,7 +715,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 8. 語音預初始化 ==========
+            // ========== 8. 音頻相關 ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -857,7 +864,6 @@
                 }
             }
 
-            // ---------- 音頻發送 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
@@ -891,7 +897,6 @@
                 }
             }
 
-            // ---------- 開始錄音 ----------
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
@@ -1031,7 +1036,7 @@
                 state.isFlushing = false;
             }
 
-            // ---------- WebSocket 預連接 ----------
+            // ---------- WebSocket ----------
             function preConnectWebSocket() {
                 if (state.wsReady) {
                     console.log('[WS] 已就緒');
@@ -1352,7 +1357,7 @@
                 state.wsConnectPromise = null;
             }
 
-            // ========== 12. 圖片預加載 ==========
+            // ========== 12. 圖片加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
                     return new Promise((resolve) => {
@@ -1414,8 +1419,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (預初始化+同音字)');
-                console.log('📌 請確保 images/ 目錄下存在所有圖片');
+                console.log('🔮 《甲骨文伏妖錄》已啟動');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
