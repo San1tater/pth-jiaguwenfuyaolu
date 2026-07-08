@@ -18,6 +18,7 @@
             color: #ecf0f1;
         }
         
+        /* 左側面板：描紅與控制區 */
         #left-panel {
             width: 50%; height: 100%;
             background-color: #f4ebd8; color: #333;
@@ -73,6 +74,7 @@
         #recordBtn:hover:not(:disabled) { background-color: #922b21; }
         #nextBtn { background-color: #27ae60; display: none; }
 
+        /* 右側面板：展示區 */
         #right-panel {
             width: 50%; height: 100%; display: flex; flex-direction: column;
             align-items: center; justify-content: center;
@@ -137,6 +139,9 @@
     </div>
 
     <script>
+        // ==========================================
+        // 1. 科大訊飛配置與字庫
+        // ==========================================
         const XF_APPID = '2600b137';
         const XF_API_KEY = '8b012124ed213c06974cd469f29e134b';
         const XF_API_SECRET = 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj';
@@ -167,6 +172,9 @@
             document.getElementById('nextBtn').style.display = 'none';
         }
 
+        // ==========================================
+        // 2. 畫布邏輯 (包含修復後的 clearCanvas)
+        // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let isDrawing = false;
@@ -196,10 +204,9 @@
         canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw);
         canvas.addEventListener('touchend', stopDrawing);
 
-        // 修正 1：徹底清除畫布，重置過關狀態並切斷殘留繪圖路徑
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.beginPath(); // 確保不會把剛剛的殘影接續畫出來
+            ctx.beginPath(); // 徹底切斷殘留路徑
             isTracingPassed = false; 
             pinyinEl.style.opacity = 0;
             instructionEl.innerText = "請描寫下方的甲骨文字形";
@@ -259,6 +266,9 @@
             });
         }
 
+        // ==========================================
+        // 3. 科大訊飛語音評測 (嚴格三階段傳輸重構版)
+        // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
         let isRecording = false;
 
@@ -272,9 +282,8 @@
             return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
         }
 
-        // 修正 2：嚴謹的 UTF-8 BOM Base64 轉換，避免 10163 解析錯誤
         function getValidXunfeiText(char) {
-            // 訊飛 ISE 接口強力要求 Base64 編碼，且必須含有 UTF-8 的 BOM (\uFEFF)
+            // 訊飛要求帶有 UTF-8 BOM，再 Base64 轉換
             const textStr = "\uFEFF" + char;
             return window.btoa(unescape(encodeURIComponent(textStr)));
         }
@@ -329,9 +338,25 @@
             
             const ws = new WebSocket(getIseAuthUrl());
             let stopTimeout;
-            let isFirstFrame = true; // 新增：用於合併第一幀傳輸
+            let isFirstAudioFrame = true; // 追蹤第一包音訊流
 
             ws.onopen = async () => {
+                // 【階段一：參數上傳 (cmd: "ssb")】
+                ws.send(JSON.stringify({
+                    common: { app_id: XF_APPID },
+                    business: { 
+                        sub: "ise",
+                        cmd: "ssb",
+                        category: "read_syllable", 
+                        ent: "cn_vip", 
+                        aue: "raw", 
+                        tte: "utf-8", 
+                        ttp_skip: true,
+                        text: getValidXunfeiText(currentTarget.char)
+                    },
+                    data: { status: 0, data: "" }
+                }));
+
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 await initAudioWorklet();
                 
@@ -351,24 +376,16 @@
                     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
                     const base64Audio = window.btoa(binary);
                     
-                    // 修正 3：將 Status 0 參數幀與第一筆真實音軌合併傳送
-                    // 絕對不能傳送空 data 的 Status 0，否則極易觸發 10163 參數錯誤
-                    if (isFirstFrame) {
-                        ws.send(JSON.stringify({
-                            common: { app_id: XF_APPID },
-                            business: { 
-                                category: "read_syllable", 
-                                ent: "cn_vip", 
-                                aue: "raw", 
-                                tte: "utf-8", // 強制聲明 UTF-8 編碼
-                                text: getValidXunfeiText(currentTarget.char)
-                            },
-                            data: { status: 0, data: base64Audio }
-                        }));
-                        isFirstFrame = false;
-                    } else {
-                        ws.send(JSON.stringify({ data: { status: 1, data: base64Audio } }));
-                    }
+                    // 【階段二：音訊上傳 (cmd: "auw", status: 1)】
+                    ws.send(JSON.stringify({ 
+                        business: {
+                            cmd: "auw",
+                            aus: isFirstAudioFrame ? 1 : 2
+                        },
+                        data: { status: 1, data: base64Audio } 
+                    }));
+                    
+                    isFirstAudioFrame = false;
                 };
 
                 source.connect(audioWorkletNode);
@@ -379,7 +396,7 @@
             ws.onmessage = (e) => {
                 const res = JSON.parse(e.data);
                 if (res.code !== 0) {
-                    instructionEl.innerText = `系統錯誤：${res.code}`;
+                    instructionEl.innerText = `系統錯誤：${res.code} - ${res.message}`;
                     stopRecording(ws); return;
                 }
                 if (res.data && res.data.status === 2) {
@@ -401,10 +418,20 @@
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
             if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-            if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ data: { status: 2, data: "" } })); }
+            
+            if (ws && ws.readyState === WebSocket.OPEN) { 
+                // 【階段三：最後一幀音訊 (aus: 4, status: 2)】
+                ws.send(JSON.stringify({ 
+                    business: { cmd: "auw", aus: 4 },
+                    data: { status: 2, data: "" } 
+                })); 
+            }
             document.getElementById('recordBtn').disabled = false;
         }
 
+        // ==========================================
+        // 4. 解析結果與顯示
+        // ==========================================
         function parseIseResult(xmlStr) {
             try {
                 const xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
