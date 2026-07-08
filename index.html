@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 (AudioWorklet 升級版)</title>
+    <title>甲骨文伏妖錄</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -154,7 +154,6 @@
         const instructionEl = document.getElementById('instruction-text');
         const pinyinEl = document.getElementById('pinyin-display');
 
-        // === 畫布與遊戲邏輯 (不變) ===
         function initGame() {
             currentTarget = dictionary[Math.floor(Math.random() * dictionary.length)];
             isTracingPassed = false;
@@ -197,9 +196,15 @@
         canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw);
         canvas.addEventListener('touchend', stopDrawing);
 
+        // 修正 1：徹底清除畫布，重置過關狀態並切斷殘留繪圖路徑
         function clearCanvas() {
-            if(isTracingPassed) return; ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if(!isTracingPassed) instructionEl.innerText = "請描寫下方的甲骨文字形";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath(); // 確保不會把剛剛的殘影接續畫出來
+            isTracingPassed = false; 
+            pinyinEl.style.opacity = 0;
+            instructionEl.innerText = "請描寫下方的甲骨文字形";
+            document.getElementById('checkBtn').style.display = 'inline-block';
+            document.getElementById('recordBtn').disabled = true;
         }
 
         async function checkWriting() {
@@ -254,7 +259,6 @@
             });
         }
 
-        // === 全新音訊處理區塊 (AudioWorklet) ===
         let audioContext, mediaStream, audioWorkletNode;
         let isRecording = false;
 
@@ -268,19 +272,11 @@
             return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
         }
 
-        // 使用 TextEncoder 強制加上 UTF-8 BOM，防止 10163 錯誤
-        function utf8ToBase64(str) {
-            const encoder = new TextEncoder();
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
-            const strBytes = encoder.encode(str);
-            const bytes = new Uint8Array(bom.length + strBytes.length);
-            bytes.set(bom, 0); bytes.set(strBytes, bom.length);
-            
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return window.btoa(binary);
+        // 修正 2：嚴謹的 UTF-8 BOM Base64 轉換，避免 10163 解析錯誤
+        function getValidXunfeiText(char) {
+            // 訊飛 ISE 接口強力要求 Base64 編碼，且必須含有 UTF-8 的 BOM (\uFEFF)
+            const textStr = "\uFEFF" + char;
+            return window.btoa(unescape(encodeURIComponent(textStr)));
         }
 
         function downsampleBuffer(buffer, sampleRate, outSampleRate) {
@@ -299,13 +295,12 @@
         }
 
         async function initAudioWorklet() {
-            // 建立 AudioWorklet 腳本 (避免分離檔案)
             const workletCode = `
                 class IseRecorderProcessor extends AudioWorkletProcessor {
                     process(inputs, outputs, parameters) {
                         const input = inputs[0];
                         if (input.length > 0 && input[0].length > 0) {
-                            this.port.postMessage(input[0]); // 傳送 Float32 音訊片段
+                            this.port.postMessage(input[0]); 
                         }
                         return true;
                     }
@@ -334,16 +329,9 @@
             
             const ws = new WebSocket(getIseAuthUrl());
             let stopTimeout;
+            let isFirstFrame = true; // 新增：用於合併第一幀傳輸
 
             ws.onopen = async () => {
-                // 1. 先發送參數幀 (包含帶 BOM 的 UTF-8 字串)
-                ws.send(JSON.stringify({
-                    common: { app_id: XF_APPID },
-                    business: { category: "read_syllable", ent: "cn_vip", aue: "raw", cmd: "start", text: utf8ToBase64(currentTarget.char) },
-                    data: { status: 0, data: "", encoding: "raw" }
-                }));
-
-                // 2. 初始化音訊環境
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 await initAudioWorklet();
                 
@@ -352,8 +340,8 @@
                 
                 audioWorkletNode.port.onmessage = (e) => {
                     if (ws.readyState !== WebSocket.OPEN) return;
-                    const input = e.data;
-                    const downsampled = downsampleBuffer(input, audioContext.sampleRate, 16000);
+                    
+                    const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
                     const pcm = new Int16Array(downsampled.length);
                     for (let i = 0; i < downsampled.length; i++) {
                         let s = Math.max(-1, Math.min(1, downsampled[i]));
@@ -361,15 +349,31 @@
                     }
                     let binary = ''; const bytes = new Uint8Array(pcm.buffer);
                     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                    const base64Audio = window.btoa(binary);
                     
-                    ws.send(JSON.stringify({ data: { status: 1, data: window.btoa(binary) } }));
+                    // 修正 3：將 Status 0 參數幀與第一筆真實音軌合併傳送
+                    // 絕對不能傳送空 data 的 Status 0，否則極易觸發 10163 參數錯誤
+                    if (isFirstFrame) {
+                        ws.send(JSON.stringify({
+                            common: { app_id: XF_APPID },
+                            business: { 
+                                category: "read_syllable", 
+                                ent: "cn_vip", 
+                                aue: "raw", 
+                                tte: "utf-8", // 強制聲明 UTF-8 編碼
+                                text: getValidXunfeiText(currentTarget.char)
+                            },
+                            data: { status: 0, data: base64Audio }
+                        }));
+                        isFirstFrame = false;
+                    } else {
+                        ws.send(JSON.stringify({ data: { status: 1, data: base64Audio } }));
+                    }
                 };
 
                 source.connect(audioWorkletNode);
-                // 連接 destination 確保 Worklet 在所有瀏覽器中持續運作
                 audioWorkletNode.connect(audioContext.destination); 
-
-                stopTimeout = setTimeout(() => stopRecording(ws), 3000); // 錄音3秒
+                stopTimeout = setTimeout(() => stopRecording(ws), 3000); 
             };
 
             ws.onmessage = (e) => {
@@ -390,25 +394,14 @@
             };
         }
 
-        // 安全的關閉錄音邏輯，防止 InvalidStateError
         function stopRecording(ws) {
             if (!isRecording) return;
             isRecording = false;
 
-            if (audioWorkletNode) {
-                audioWorkletNode.disconnect();
-                audioWorkletNode = null;
-            }
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close().catch(() => {}); // 攔截潛在錯誤
-            }
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(t => t.stop());
-                mediaStream = null;
-            }
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ data: { status: 2, data: "" } })); // 送出結束幀
-            }
+            if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
+            if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
+            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+            if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ data: { status: 2, data: "" } })); }
             document.getElementById('recordBtn').disabled = false;
         }
 
