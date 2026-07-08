@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 最終修復版</title>
+    <title>甲骨文伏妖錄 - 真正修復版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,6 +36,8 @@
             font-size: 22px; color: #5a4634; font-weight: bold;
             margin-top: 10px; background: rgba(255,255,255,0.6);
             padding: 5px 15px; border-radius: 8px;
+            text-align: center;
+            max-width: 90%;
         }
 
         #canvas-container {
@@ -103,6 +105,7 @@
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
+        .status-ok { background-color: #27ae60 !important; }
     </style>
 </head>
 <body>
@@ -136,7 +139,7 @@
 
     <script>
         // ==========================================
-        // 1. 配置與字庫
+        // 1. 配置與字庫 (請將密鑰移至服務端，此處僅示範)
         // ==========================================
         const XF_APPID = '2600b137';
         const XF_API_KEY = '8b012124ed213c06974cd469f29e134b';
@@ -151,6 +154,9 @@
         let isTracingPassed = false;
         const instructionEl = document.getElementById('instruction-text');
         const pinyinEl = document.getElementById('pinyin-display');
+        const checkBtn = document.getElementById('checkBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const nextBtn = document.getElementById('nextBtn');
 
         function initGame() {
             console.log("[GAME] 初始化遊戲");
@@ -159,13 +165,28 @@
             clearCanvas();
             document.getElementById('trace-guide').src = currentTarget.svg;
             document.getElementById('monster-container').classList.remove('revealed');
-            pinyinEl.style.opacity = 0; pinyinEl.innerText = currentTarget.pinyin;
+            pinyinEl.style.opacity = 0;
+            pinyinEl.innerText = currentTarget.pinyin;
             instructionEl.innerText = "請描寫下方的甲骨文字形";
-            document.getElementById('checkBtn').style.display = 'inline-block';
-            
-            const btn = document.getElementById('recordBtn');
-            btn.disabled = true; btn.innerText = "🎙️ 唸咒"; btn.classList.remove('recording-pulse');
-            document.getElementById('nextBtn').style.display = 'none';
+            checkBtn.style.display = 'inline-block';
+            recordBtn.disabled = true;
+            recordBtn.innerText = "🎙️ 唸咒";
+            recordBtn.classList.remove('recording-pulse');
+            nextBtn.style.display = 'none';
+            // 重置录音相关状态
+            if (window.audioContext) {
+                window.audioContext.close().catch(()=>{});
+                window.audioContext = null;
+            }
+            if (window.mediaStream) {
+                window.mediaStream.getTracks().forEach(t=>t.stop());
+                window.mediaStream = null;
+            }
+            if (window.currentWs) {
+                window.currentWs.close();
+                window.currentWs = null;
+            }
+            window.isRecording = false;
         }
 
         // ==========================================
@@ -173,8 +194,12 @@
         // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        let isDrawing = false; const BRUSH_SIZE = 12;
-        ctx.lineWidth = BRUSH_SIZE; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2c3e50';
+        let isDrawing = false;
+        const BRUSH_SIZE = 12;
+        ctx.lineWidth = BRUSH_SIZE;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#2c3e50';
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -185,20 +210,122 @@
         function startDrawing(e) { if(isTracingPassed) return; e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x + 0.1, pos.y + 0.1); ctx.stroke(); }
         function draw(e) { if (!isDrawing || isTracingPassed) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
         function stopDrawing() { isDrawing = false; }
-        canvas.addEventListener('pointerdown', startDrawing); canvas.addEventListener('pointermove', draw); canvas.addEventListener('pointerup', stopDrawing); canvas.addEventListener('pointerout', stopDrawing); canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('pointerdown', startDrawing);
+        canvas.addEventListener('pointermove', draw);
+        canvas.addEventListener('pointerup', stopDrawing);
+        canvas.addEventListener('pointerout', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
 
-        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); isTracingPassed = false; pinyinEl.style.opacity = 0; instructionEl.innerText = "請描寫下方的甲骨文字形"; document.getElementById('checkBtn').style.display = 'inline-block'; document.getElementById('recordBtn').disabled = true; }
-        
-        async function checkWriting() {
-            // 此處為方便您測試，畫作鑑定會自動成功
-            isTracingPassed = true; 
-            instructionEl.innerText = "符文生效！準備好後點擊唸咒按鈕";
-            pinyinEl.style.opacity = 1; document.getElementById('checkBtn').style.display = 'none';
-            document.getElementById('recordBtn').disabled = false;
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            isTracingPassed = false;
+            pinyinEl.style.opacity = 0;
+            instructionEl.innerText = "請描寫下方的甲骨文字形";
+            checkBtn.style.display = 'inline-block';
+            recordBtn.disabled = true;
+            recordBtn.innerText = "🎙️ 唸咒";
+            recordBtn.classList.remove('recording-pulse');
+            document.getElementById('monster-container').classList.remove('revealed');
+            nextBtn.style.display = 'none';
         }
 
         // ==========================================
-        // 3. 語音評測 (徹底修復「七萬」預設測試卷問題)
+        // 3. 書寫驗證 (像素重疊率 ≥ 80%)
+        // ==========================================
+        async function checkWriting() {
+            instructionEl.innerText = "⏳ 比對中...";
+            checkBtn.disabled = true;
+
+            try {
+                // 1) 獲取用戶畫布數據 (二值化)
+                const userData = ctx.getImageData(0, 0, 350, 350);
+                const userPixels = new Uint8Array(userData.data);
+                const userMask = new Uint8Array(350 * 350);
+                for (let i = 0; i < userPixels.length; i += 4) {
+                    // 檢查是否有筆畫 (灰度 < 128 視為筆跡)
+                    const gray = 0.299 * userPixels[i] + 0.587 * userPixels[i+1] + 0.114 * userPixels[i+2];
+                    if (gray < 128) userMask[i/4] = 1;
+                }
+
+                // 2) 將 SVG 底圖繪製到隱藏 canvas 並提取二值化 mask
+                const hiddenCanvas = document.createElement('canvas');
+                hiddenCanvas.width = 350;
+                hiddenCanvas.height = 350;
+                const hiddenCtx = hiddenCanvas.getContext('2d');
+                
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                // 等待圖片加載
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = currentTarget.svg;
+                });
+                hiddenCtx.drawImage(img, 0, 0, 350, 350);
+                const guideData = hiddenCtx.getImageData(0, 0, 350, 350);
+                const guidePixels = new Uint8Array(guideData.data);
+                const guideMask = new Uint8Array(350 * 350);
+                for (let i = 0; i < guidePixels.length; i += 4) {
+                    // 底圖線條顏色為 #5a4634 (暗色)，轉灰度 < 128 視為筆跡
+                    const gray = 0.299 * guidePixels[i] + 0.587 * guidePixels[i+1] + 0.114 * guidePixels[i+2];
+                    if (gray < 128) guideMask[i/4] = 1;
+                }
+
+                // 3) 對底圖 mask 進行膨脹 (半徑 6 像素)
+                const radius = 6;
+                const expanded = new Uint8Array(350 * 350);
+                for (let y = 0; y < 350; y++) {
+                    for (let x = 0; x < 350; x++) {
+                        const idx = y * 350 + x;
+                        if (guideMask[idx] === 1) {
+                            // 膨脹該點周圍
+                            for (let dy = -radius; dy <= radius; dy++) {
+                                for (let dx = -radius; dx <= radius; dx++) {
+                                    const nx = x + dx, ny = y + dy;
+                                    if (nx >= 0 && nx < 350 && ny >= 0 && ny < 350) {
+                                        expanded[ny * 350 + nx] = 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4) 統計用戶筆跡落在膨脹區域內的比例
+                let hit = 0, total = 0;
+                for (let i = 0; i < userMask.length; i++) {
+                    if (userMask[i] === 1) {
+                        total++;
+                        if (expanded[i] === 1) hit++;
+                    }
+                }
+                const ratio = total === 0 ? 0 : hit / total;
+                console.log(`[驗證] 重疊率: ${(ratio * 100).toFixed(1)}% (${hit}/${total})`);
+
+                if (ratio >= 0.8 && total > 50) { // 至少畫了50個像素
+                    isTracingPassed = true;
+                    instructionEl.innerText = "✅ 符文生效！準備好後點擊唸咒按鈕";
+                    pinyinEl.style.opacity = 1;
+                    checkBtn.style.display = 'none';
+                    recordBtn.disabled = false;
+                    recordBtn.classList.remove('recording-pulse');
+                    recordBtn.innerText = "🎙️ 唸咒";
+                } else {
+                    instructionEl.innerText = `❌ 重疊率 ${(ratio * 100).toFixed(0)}%，需達80%，請重新描寫`;
+                }
+            } catch (err) {
+                console.error("[驗證] 錯誤:", err);
+                instructionEl.innerText = "比對失敗，請重試";
+            } finally {
+                checkBtn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 4. 語音評測 (修復分數解析)
         // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
         let currentWs = null;
@@ -206,7 +333,8 @@
         let stopTimeout = null;
 
         function getIseAuthUrl() {
-            const host = "ise-api.xfyun.cn"; const path = "/v2/open-ise";
+            const host = "ise-api.xfyun.cn";
+            const path = "/v2/open-ise";
             const date = new Date().toUTCString();
             const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
             const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, XF_API_SECRET);
@@ -215,8 +343,6 @@
             return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
         }
 
-        // 【關鍵修復點】：回傳純文字，僅加入 UTF-8 BOM，不使用 Base64 編碼
-        // 這樣 JSON stringify 時才會保留純中文字元，讓訊飛引擎正確辨識。
         function getValidXunfeiText(char) {
             return '\uFEFF' + char; 
         }
@@ -251,46 +377,43 @@
             `;
             const blob = new Blob([workletCode], { type: 'application/javascript' });
             const workletUrl = URL.createObjectURL(blob);
-            
-            console.log("[AUDIO] 嘗試載入 AudioWorklet...");
             try {
                 await audioContext.audioWorklet.addModule(workletUrl);
-                console.log("[AUDIO] AudioWorklet 載入成功");
                 return true;
             } catch (err) {
-                console.error("[AUDIO] AudioWorklet 載入失敗！(AbortError)", err);
+                console.error("[AUDIO] AudioWorklet 載入失敗", err);
                 return false;
             }
         }
 
         async function toggleRecording() {
             if (isRecording) {
-                console.log("[USER] 點擊 [停止錄音]");
                 stopRecordingAndAssess();
             } else {
-                console.log("[USER] 點擊 [開始錄音]");
                 await startVoiceEvaluation();
             }
         }
 
         async function startVoiceEvaluation() {
-            const btn = document.getElementById('recordBtn');
+            recordBtn.disabled = true;
             instructionEl.innerText = "🔴 請允許麥克風...";
 
-            try { 
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); 
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
                 console.log("[AUDIO] 麥克風取得成功");
             } catch (e) {
                 console.error("[AUDIO] 麥克風取得失敗", e);
-                instructionEl.innerText = "❌ 麥克風授權失敗！";
+                instructionEl.innerText = "❌ 麥克風授權失敗！請檢查權限";
+                recordBtn.disabled = false;
                 return;
             }
 
             isRecording = true;
-            btn.innerText = "⏹️ 停止錄音";
-            btn.classList.add('recording-pulse');
-            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」，讀完點擊停止`;
-            
+            recordBtn.innerText = "⏹️ 停止錄音";
+            recordBtn.classList.add('recording-pulse');
+            recordBtn.disabled = false;
+            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」 (15秒後自動停止)`;
+
             const wsUrl = getIseAuthUrl();
             console.log("[WS] 開始連線...");
             currentWs = new WebSocket(wsUrl);
@@ -299,30 +422,25 @@
 
             currentWs.onopen = async () => {
                 console.log("[WS] 連線成功！");
-                
                 if (!isRecording) {
-                    console.warn("[WS] 使用者已提前停止，放棄初始化");
                     if (currentWs) currentWs.close();
-                    return; 
+                    return;
                 }
 
                 const payload = {
                     common: { app_id: XF_APPID },
-                    business: { 
-                        sub: "ise", cmd: "ssb", category: "read_syllable", 
+                    business: {
+                        sub: "ise", cmd: "ssb", category: "read_syllable",
                         ent: "cn_vip", aue: "raw", tte: "utf-8", ttp_skip: true,
-                        text: getValidXunfeiText(currentTarget.char) // 純文字，帶BOM
+                        text: getValidXunfeiText(currentTarget.char)
                     },
                     data: { status: 0, data: "" }
                 };
-                console.log("[WS] 發送首幀 (純文字狀態，引擎將精準辨識):", payload);
+                console.log("[WS] 發送首幀");
                 currentWs.send(JSON.stringify(payload));
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') {
-                    console.log("[AUDIO] 喚醒 AudioContext...");
-                    await audioContext.resume();
-                }
+                if (audioContext.state === 'suspended') await audioContext.resume();
 
                 const workletSuccess = await initAudioWorklet();
                 if (!workletSuccess) {
@@ -330,57 +448,55 @@
                     forceResetRecording();
                     return;
                 }
-                
+
                 if (!mediaStream || !mediaStream.active) {
-                    console.error("[AUDIO] mediaStream 無效或已被清空！");
                     forceResetRecording();
                     return;
                 }
-                
+
                 try {
                     const source = audioContext.createMediaStreamSource(mediaStream);
                     audioWorkletNode = new AudioWorkletNode(audioContext, 'ise-recorder');
-                    
                     audioWorkletNode.port.onmessage = (e) => {
                         if (!currentWs || currentWs.readyState !== WebSocket.OPEN || !isRecording) return;
-                        
                         const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
-                        
-                        let sum = 0;
-                        for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
-                        if (audioChunkCount % 10 === 0) {
-                            console.log(`[AUDIO] 傳輸 Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}`);
-                        }
                         audioChunkCount++;
+                        // 每50幀打印一次音量，減輕日誌
+                        if (audioChunkCount % 50 === 0) {
+                            let sum = 0;
+                            for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
+                            console.log(`[AUDIO] Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}`);
+                        }
 
                         const pcm = new Int16Array(downsampled.length);
                         for (let i = 0; i < downsampled.length; i++) {
                             let s = Math.max(-1, Math.min(1, downsampled[i]));
                             pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                         }
-                        let binary = ''; const bytes = new Uint8Array(pcm.buffer);
+                        let binary = '';
+                        const bytes = new Uint8Array(pcm.buffer);
                         for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
                         const base64Audio = window.btoa(binary);
 
-                        currentWs.send(JSON.stringify({ 
+                        currentWs.send(JSON.stringify({
                             business: { cmd: "auw", aus: isFirstAudioFrame ? 1 : 2 },
-                            data: { status: 1, data: base64Audio } 
+                            data: { status: 1, data: base64Audio }
                         }));
-                        
                         isFirstAudioFrame = false;
                     };
 
                     source.connect(audioWorkletNode);
-                    audioWorkletNode.connect(audioContext.destination); 
-                    console.log("[AUDIO] 錄音管道串接完成，開始傳輸！");
+                    audioWorkletNode.connect(audioContext.destination);
+                    console.log("[AUDIO] 錄音管道串接完成");
 
-                    stopTimeout = setTimeout(() => { 
-                        console.log("[USER] 8 秒超時，自動停止");
-                        stopRecordingAndAssess(); 
-                    }, 8000);
+                    // 超時自動停止 (15秒)
+                    stopTimeout = setTimeout(() => {
+                        console.log("[USER] 15秒超時，自動停止");
+                        if (isRecording) stopRecordingAndAssess();
+                    }, 15000);
 
                 } catch (err) {
-                    console.error("[AUDIO] 建立音訊來源時發生錯誤:", err);
+                    console.error("[AUDIO] 建立音訊來源錯誤:", err);
                     forceResetRecording();
                 }
             };
@@ -388,12 +504,11 @@
             currentWs.onmessage = (e) => {
                 const res = JSON.parse(e.data);
                 if (res.code !== 0) {
-                    console.error("[WS] 伺服器回傳錯誤:", res);
+                    console.error("[WS] 伺服器錯誤:", res);
                     instructionEl.innerText = `系統錯誤：${res.code}`;
                     forceResetRecording();
                     return;
                 }
-                
                 if (res.data && res.data.status === 2) {
                     console.log("[WS] 收到最終評測結果 (status=2)");
                     try {
@@ -401,21 +516,20 @@
                         const bytes = new Uint8Array(binaryStr.length);
                         for (let i = 0; i < binaryStr.length; i++) { bytes[i] = binaryStr.charCodeAt(i); }
                         const xmlStr = new TextDecoder("utf-8").decode(bytes);
-                        
-                        console.log("========== 📋 訊飛回傳原始 XML ==========\n" + xmlStr + "\n========================================");
+                        console.log("========== 📋 訊飛回傳 XML ==========\n" + xmlStr + "\n========================================");
                         parseIseResult(xmlStr);
                     } catch (error) {
-                        console.error("[XML] Base64 解碼失敗:", error);
+                        console.error("[XML] 解碼失敗:", error);
                         instructionEl.innerText = "資料解析錯誤，請重試";
                         forceResetRecording();
                     }
                     currentWs.close();
                 }
             };
-            
+
             currentWs.onerror = (err) => {
-                console.error("[WS] WebSocket 連線異常:", err);
-                instructionEl.innerText = "連線失敗，請檢查網路或密鑰";
+                console.error("[WS] WebSocket 異常:", err);
+                instructionEl.innerText = "連線失敗，請檢查網路";
                 forceResetRecording();
             };
         }
@@ -423,29 +537,28 @@
         function stopRecordingAndAssess() {
             if (!isRecording) return;
             isRecording = false;
-            console.log("[ACTION] 執行停止錄音並送出結算");
+            console.log("[ACTION] 停止錄音並送出結算");
 
-            const btn = document.getElementById('recordBtn');
-            btn.classList.remove('recording-pulse');
-            btn.innerText = "⏳ 評分中...";
-            btn.disabled = true;
+            recordBtn.classList.remove('recording-pulse');
+            recordBtn.innerText = "⏳ 評分中...";
+            recordBtn.disabled = true;
 
             if (stopTimeout) clearTimeout(stopTimeout);
 
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
-            if (mediaStream) { 
-                mediaStream.getTracks().forEach(t => t.stop()); 
-                mediaStream = null; 
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
                 console.log("[AUDIO] 麥克風已釋放");
             }
-            
-            if (currentWs && currentWs.readyState === WebSocket.OPEN) { 
-                console.log("[WS] 發送尾幀 (aus=4, status=2)");
-                currentWs.send(JSON.stringify({ 
+
+            if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+                console.log("[WS] 發送尾幀");
+                currentWs.send(JSON.stringify({
                     business: { cmd: "auw", aus: 4 },
-                    data: { status: 2, data: "" } 
-                })); 
+                    data: { status: 2, data: "" }
+                }));
             }
         }
 
@@ -457,56 +570,67 @@
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
             if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
             if (currentWs) { currentWs.close(); }
-
-            const btn = document.getElementById('recordBtn');
-            btn.classList.remove('recording-pulse');
-            btn.innerText = "🎙️ 唸咒";
-            btn.disabled = false;
+            recordBtn.classList.remove('recording-pulse');
+            recordBtn.innerText = "🎙️ 唸咒";
+            recordBtn.disabled = false;
+            // 若尚未通過描摹，則保持禁用
+            if (!isTracingPassed) recordBtn.disabled = true;
         }
 
+        // ==========================================
+        // 5. 解析評測結果 (正確抓取 total_score)
+        // ==========================================
         function parseIseResult(xmlStr) {
-            const btn = document.getElementById('recordBtn');
             try {
                 const xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
-                const readSyllable = xmlDoc.getElementsByTagName("read_syllable")[0];
-                
-                if (!readSyllable) {
-                    console.error("[XML] 找不到 <read_syllable> 節點");
+                // 正確路徑：xml_result -> read_syllable -> rec_paper -> read_syllable
+                const outerRead = xmlDoc.getElementsByTagName("read_syllable")[0];
+                if (!outerRead) {
+                    console.error("[XML] 找不到外層 read_syllable");
                     instructionEl.innerText = "未找到評分結果";
-                    btn.innerText = "🎙️ 唸咒"; btn.disabled = false;
+                    recordBtn.disabled = false;
+                    recordBtn.innerText = "🎙️ 唸咒";
+                    return;
+                }
+                const recPaper = outerRead.getElementsByTagName("rec_paper")[0];
+                if (!recPaper) {
+                    console.error("[XML] 找不到 rec_paper");
+                    instructionEl.innerText = "未找到評分節點";
+                    recordBtn.disabled = false;
+                    recordBtn.innerText = "🎙️ 唸咒";
+                    return;
+                }
+                const innerRead = recPaper.getElementsByTagName("read_syllable")[0];
+                if (!innerRead) {
+                    console.error("[XML] 找不到內層 read_syllable");
+                    instructionEl.innerText = "未找到評分節點";
+                    recordBtn.disabled = false;
+                    recordBtn.innerText = "🎙️ 唸咒";
                     return;
                 }
 
-                const score = parseFloat(readSyllable.getAttribute("total_score") || 0);
+                const score = parseFloat(innerRead.getAttribute("total_score") || 0);
                 console.log(`[ISE] 最終得分: ${score}`);
-                
-                if (score === 0) {
-                    const sylls = xmlDoc.getElementsByTagName("syll");
-                    if (sylls.length > 0) {
-                        const dpMessage = sylls[0].getAttribute("dp_message");
-                        console.warn(`[ISE] 0分原因 (dp_message) = ${dpMessage} (16=漏讀/無聲, 128=錯讀)`);
-                    }
-                }
-                
+
                 if (score > 60) {
                     instructionEl.innerText = "✨ 咒語成功！妖怪現形了！";
                     revealMonster();
                 } else {
                     instructionEl.innerText = `發音不夠準 (${score.toFixed(1)}分)，再來一次！`;
-                    btn.innerText = "🎙️ 唸咒";
-                    btn.disabled = false;
+                    recordBtn.innerText = "🎙️ 唸咒";
+                    recordBtn.disabled = false;
                 }
-            } catch (err) { 
-                console.error("[XML] 評測結果解析異常:", err);
-                instructionEl.innerText = "解析評測結果失敗"; 
-                btn.innerText = "🎙️ 唸咒";
-                btn.disabled = false;
+            } catch (err) {
+                console.error("[XML] 解析異常:", err);
+                instructionEl.innerText = "解析評測結果失敗";
+                recordBtn.innerText = "🎙️ 唸咒";
+                recordBtn.disabled = false;
             }
         }
 
         function revealMonster() {
-            document.getElementById('recordBtn').style.display = 'none';
-            document.getElementById('nextBtn').style.display = 'inline-block';
+            recordBtn.style.display = 'none';
+            nextBtn.style.display = 'inline-block';
             document.getElementById('modern-char').innerText = currentTarget.char;
             document.getElementById('monster-pic').innerText = currentTarget.emoji;
             document.getElementById('monster-container').classList.add('revealed');
