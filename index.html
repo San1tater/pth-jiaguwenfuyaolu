@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 深度除錯版</title>
+    <title>甲骨文伏妖錄 - 最終修復版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -169,7 +169,7 @@
         }
 
         // ==========================================
-        // 2. 畫布邏輯 (簡化省略，專注語音)
+        // 2. 畫布邏輯
         // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -190,7 +190,7 @@
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); isTracingPassed = false; pinyinEl.style.opacity = 0; instructionEl.innerText = "請描寫下方的甲骨文字形"; document.getElementById('checkBtn').style.display = 'inline-block'; document.getElementById('recordBtn').disabled = true; }
         
         async function checkWriting() {
-            console.log("[GAME] 驗證符文 (為了方便測試語音，此處直接放行)");
+            // 此處為方便您測試，畫作鑑定會自動成功
             isTracingPassed = true; 
             instructionEl.innerText = "符文生效！準備好後點擊唸咒按鈕";
             pinyinEl.style.opacity = 1; document.getElementById('checkBtn').style.display = 'none';
@@ -198,7 +198,7 @@
         }
 
         // ==========================================
-        // 3. 語音評測 (深度除錯與安全防護)
+        // 3. 語音評測 (徹底修復「七萬」預設測試卷問題)
         // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
         let currentWs = null;
@@ -215,15 +215,10 @@
             return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
         }
 
+        // 【關鍵修復點】：回傳純文字，僅加入 UTF-8 BOM，不使用 Base64 編碼
+        // 這樣 JSON stringify 時才會保留純中文字元，讓訊飛引擎正確辨識。
         function getValidXunfeiText(char) {
-            const encoder = new TextEncoder();
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
-            const textBytes = encoder.encode(char);
-            const combined = new Uint8Array(bom.length + textBytes.length);
-            combined.set(bom, 0); combined.set(textBytes, bom.length);
-            let binary = '';
-            for (let i = 0; i < combined.byteLength; i++) { binary += String.fromCharCode(combined[i]); }
-            return window.btoa(binary);
+            return '\uFEFF' + char; 
         }
 
         function downsampleBuffer(buffer, sampleRate, outSampleRate) {
@@ -263,7 +258,7 @@
                 console.log("[AUDIO] AudioWorklet 載入成功");
                 return true;
             } catch (err) {
-                console.error("[AUDIO] 致命錯誤：AudioWorklet 載入失敗！(AbortError)", err);
+                console.error("[AUDIO] AudioWorklet 載入失敗！(AbortError)", err);
                 return false;
             }
         }
@@ -284,7 +279,7 @@
 
             try { 
                 mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); 
-                console.log("[AUDIO] 麥克風取得成功", mediaStream);
+                console.log("[AUDIO] 麥克風取得成功");
             } catch (e) {
                 console.error("[AUDIO] 麥克風取得失敗", e);
                 instructionEl.innerText = "❌ 麥克風授權失敗！";
@@ -297,7 +292,7 @@
             instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」，讀完點擊停止`;
             
             const wsUrl = getIseAuthUrl();
-            console.log("[WS] 開始連線...", wsUrl);
+            console.log("[WS] 開始連線...");
             currentWs = new WebSocket(wsUrl);
             let isFirstAudioFrame = true;
             let audioChunkCount = 0;
@@ -305,7 +300,6 @@
             currentWs.onopen = async () => {
                 console.log("[WS] 連線成功！");
                 
-                // 防護 1: 使用者可能在 WS 連線期間點擊了停止
                 if (!isRecording) {
                     console.warn("[WS] 使用者已提前停止，放棄初始化");
                     if (currentWs) currentWs.close();
@@ -317,11 +311,11 @@
                     business: { 
                         sub: "ise", cmd: "ssb", category: "read_syllable", 
                         ent: "cn_vip", aue: "raw", tte: "utf-8", ttp_skip: true,
-                        text: getValidXunfeiText(currentTarget.char)
+                        text: getValidXunfeiText(currentTarget.char) // 純文字，帶BOM
                     },
                     data: { status: 0, data: "" }
                 };
-                console.log("[WS] 發送首幀 (status=0):", payload);
+                console.log("[WS] 發送首幀 (純文字狀態，引擎將精準辨識):", payload);
                 currentWs.send(JSON.stringify(payload));
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -332,12 +326,11 @@
 
                 const workletSuccess = await initAudioWorklet();
                 if (!workletSuccess) {
-                    instructionEl.innerText = "瀏覽器不支援或封鎖了語音模組";
+                    instructionEl.innerText = "瀏覽器不支援語音模組";
                     forceResetRecording();
                     return;
                 }
                 
-                // 防護 2: 確認 mediaStream 仍然有效，避免 TypeError
                 if (!mediaStream || !mediaStream.active) {
                     console.error("[AUDIO] mediaStream 無效或已被清空！");
                     forceResetRecording();
@@ -353,11 +346,10 @@
                         
                         const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
                         
-                        // 計算音量供除錯使用
                         let sum = 0;
                         for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
                         if (audioChunkCount % 10 === 0) {
-                            console.log(`[AUDIO] 傳輸 Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}, aus: ${isFirstAudioFrame ? 1 : 2}`);
+                            console.log(`[AUDIO] 傳輸 Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}`);
                         }
                         audioChunkCount++;
 
@@ -382,7 +374,6 @@
                     audioWorkletNode.connect(audioContext.destination); 
                     console.log("[AUDIO] 錄音管道串接完成，開始傳輸！");
 
-                    // 8 秒極限保護
                     stopTimeout = setTimeout(() => { 
                         console.log("[USER] 8 秒超時，自動停止");
                         stopRecordingAndAssess(); 
