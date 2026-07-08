@@ -476,6 +476,7 @@
                 flushResolve: null,
                 isFlushing: false,
                 recognizedText: '',
+                isFirstAudioFrame: true, // 标记是否第一帧音频
             };
 
             // ========== 4. DOM ==========
@@ -760,21 +761,28 @@
             let recordTimer = null;
             let sourceNode = null;
 
-            // ---------- 音頻發送 ----------
+            // ---------- 音頻發送（修正為聽寫格式） ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
                     return;
                 }
-                const aus = state.audioBuffer.length === 0 ? 1 : 2;
+                // 聽寫的數據幀不需要 business，只需要 data
                 const payload = {
-                    business: { cmd: 'auw', aus: aus },
-                    data: { status: 1, data: b64Data }
+                    data: {
+                        status: 1,
+                        format: 'audio/L16;rate=16000',
+                        encoding: 'raw',
+                        audio: b64Data
+                    }
                 };
+                // 如果是第一帧音频，将 status 改为 0（但我们已经先发了首帧 status=0，所以这里不用改）
+                // 首帧已经发送了 status:0，所以这里 status:1
+                // 但我们有音频缓冲计数，可以使用
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
+                    console.log(`[WS] 發送音頻幀, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
                 } catch (e) {
                     console.error('發送音訊幀失敗:', e);
                 }
@@ -782,13 +790,10 @@
 
             function sendAudioEnd() {
                 if (!state.wsReady || !state.wsConnection) return;
-                const payload = {
-                    business: { cmd: 'auw', aus: 4 },
-                    data: { status: 2, data: '' }
-                };
+                const payload = { data: { status: 2 } };
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log('[WS] 發送尾幀 aus=4');
+                    console.log('[WS] 發送尾幀 status=2');
                 } catch (e) {
                     console.error('發送尾幀失敗:', e);
                 }
@@ -864,6 +869,7 @@
                     isRecording = true;
                     state.isRecording = true;
                     state.recordStartTime = Date.now();
+                    state.isFirstAudioFrame = true; // 重置标记
                     btnVoice.textContent = '⏹️ 停止錄音';
                     btnVoice.classList.add('recording');
                     btnVoice.disabled = false;
@@ -983,7 +989,7 @@
                 state.isFlushing = false;
             }
 
-            // ========== 8. WebSocket 與訊飛語音聽寫 ==========
+            // ========== 8. WebSocket 與語音聽寫 ==========
             function buildWSSUrl() {
                 const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
                 const host = new URL(WSS_URL).host;
@@ -1048,12 +1054,11 @@
                 const payload = {
                     common: { app_id: XF_CONFIG.APPID },
                     business: {
-                        sub: 'iat',
-                        ent: 'sms', // 普通聽寫
-                        auf: 'audio/L16;rate=16000',
-                        aue: 'raw',
-                        vad_en: '1', // 啟用VAD
-                        ttp_skip: '1', // 跳過文本傳輸
+                        language: 'zh_cn',
+                        domain: 'iat',
+                        accent: 'mandarin',
+                        // 可選參數：eos, dwa, ptt, pcm, ltc, rlang, vinfo, nunum, nbest, wbest
+                        // 這裡保持簡潔
                     },
                     data: { status: 0 }
                 };
@@ -1061,8 +1066,6 @@
                 console.log('[WS] 發送首幀:', json);
                 state.wsConnection.send(json);
             }
-
-            // 音頻幀與尾幀同之前（sendAudioChunk / sendAudioEnd）
 
             function handleWSMessage(data) {
                 try {
@@ -1094,23 +1097,25 @@
                         setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
-                    // 聽寫結果在 data 中，格式可能为 { data: { result: { text: '...' } } }
-                    if (json.data && json.data.result) {
-                        let recognized = json.data.result.text || '';
-                        // 去除空格、標點
+                    // 聽寫結果在 data.result.ws 中，提取文字
+                    let recognized = '';
+                    if (json.data && json.data.result && json.data.result.ws) {
+                        const ws = json.data.result.ws;
+                        for (let i = 0; i < ws.length; i++) {
+                            const cw = ws[i].cw;
+                            if (cw && cw.length > 0) {
+                                // 取第一个候选（通常是最佳结果）
+                                recognized += cw[0].w;
+                            }
+                        }
+                        // 去除空格、标点
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
                         console.log('[WS] 識別文字:', recognized);
                         state.recognizedText = recognized;
-                        // 如果 status==2，表示最終結果，進行比對
-                        if (json.data.status === 2) {
+                        // 如果 status==2 或者 ls==true（ls可能表示最后一片），进行比对
+                        if (json.data.status === 2 || json.data.result.ls === true) {
                             handleRecognitionResult(recognized);
                         }
-                    } else if (json.data && json.data.text) {
-                        let recognized = json.data.text || '';
-                        recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
-                        state.recognizedText = recognized;
-                        // 可能沒有 status，直接比對
-                        handleRecognitionResult(recognized);
                     } else {
                         console.log('[WS] 暫無識別結果');
                     }
@@ -1121,7 +1126,7 @@
 
             function handleRecognitionResult(recognized) {
                 const target = state.currentChar.char;
-                // 簡單比對：去除空格後相等
+                // 簡單比對
                 if (recognized === target) {
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
@@ -1344,7 +1349,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (改用語音聽寫比對)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (修正聽寫API格式)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
