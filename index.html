@@ -499,7 +499,7 @@
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
             const THRESHOLDS = { drawPass: 45, voicePass: 60 };
 
-            // ========== 2. 字庫（使用圖片） ==========
+            // ========== 2. 字庫（使用圖片，文件名改為繁體） ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -507,14 +507,14 @@
                 pinyinTone: 'yáng',
                 emoji: '🐑',
                 imgSrc: 'images/羊_1.png',
-                img: null, // 加载后填充
+                img: null,
             }, {
                 id: 'ma',
                 char: '馬',
                 pinyinRaw: 'ma3',
                 pinyinTone: 'mǎ',
                 emoji: '🐴',
-                imgSrc: 'images/马_1.png',
+                imgSrc: 'images/馬_1.png',
                 img: null,
             }, {
                 id: 'niu',
@@ -530,7 +530,7 @@
                 pinyinRaw: 'niao3',
                 pinyinTone: 'niǎo',
                 emoji: '🐦',
-                imgSrc: 'images/鸟_1.png',
+                imgSrc: 'images/鳥_1.png',
                 img: null,
             }, {
                 id: 'yu',
@@ -538,7 +538,7 @@
                 pinyinRaw: 'yu2',
                 pinyinTone: 'yú',
                 emoji: '🐟',
-                imgSrc: 'images/鱼_1.png',
+                imgSrc: 'images/魚_1.png',
                 img: null,
             }];
 
@@ -605,22 +605,19 @@
 
             function renderOracle() {
                 ctx.clearRect(0, 0, canvasW, canvasH);
-                // 繪製底圖（標準字形圖片）
                 const char = state.currentChar;
                 if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
                     ctx.save();
-                    ctx.globalAlpha = 0.25; // 半透明底圖
+                    ctx.globalAlpha = 0.25;
                     ctx.drawImage(char.img, 0, 0, canvasW, canvasH);
                     ctx.restore();
                 } else {
-                    // 若圖片未加載，顯示提示
-                    ctx.fillStyle = '#ccc';
-                    ctx.font = '20px sans-serif';
+                    ctx.fillStyle = '#ddd';
+                    ctx.font = '18px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('字形圖片加載中...', canvasW / 2, canvasH / 2);
+                    ctx.fillText('字形載入中...', canvasW / 2, canvasH / 2);
                 }
-                // 繪製用戶筆跡
                 if (drawHistory.length > 0) {
                     ctx.save();
                     ctx.strokeStyle = '#5a4a3a';
@@ -690,7 +687,7 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 6. 像素比對 (F1) — 使用圖片作為標準 ==========
+            // ========== 6. 像素比對 (F1) ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -700,12 +697,9 @@
                 off1.width = w;
                 off1.height = h;
                 const ctx1 = off1.getContext('2d');
-                // 繪製標準字形圖片
                 const char = state.currentChar;
                 if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
                     ctx1.drawImage(char.img, 0, 0, w, h);
-                } else {
-                    // 若無圖片，回退為空白
                 }
 
                 const off2 = document.createElement('canvas');
@@ -716,7 +710,6 @@
                 ctx2.lineWidth = Math.max(3, canvasW * 0.02) * dpr;
                 ctx2.lineCap = 'round';
                 ctx2.lineJoin = 'round';
-                // 繪製用戶筆跡（放大到離屏尺寸）
                 for (const path of drawHistory) {
                     if (path.length < 2) continue;
                     ctx2.beginPath();
@@ -747,8 +740,8 @@
                     const lum1 = 0.299 * data1[i] + 0.587 * data1[i + 1] + 0.114 * data1[i + 2];
                     const lum2 = 0.299 * data2[i] + 0.587 * data2[i + 1] + 0.114 * data2[i + 2];
 
-                    const isFore1 = lum1 < threshold; // 黑色文字（亮度低）為前景
-                    const isFore2 = lum2 > threshold; // 白色筆跡為前景
+                    const isFore1 = lum1 < threshold;
+                    const isFore2 = lum2 > threshold;
 
                     if (isFore1 && isFore2) tp++;
                     else if (!isFore1 && isFore2) fp++;
@@ -762,7 +755,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) — 不變 ==========
+            // ========== 7. 語音錄製 (Worklet) ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -833,6 +826,41 @@
                 }
             }
 
+            // ----- 音頻發送相關 -----
+            function sendAudioChunk(b64Data) {
+                if (!state.wsReady || !state.wsConnection) {
+                    console.warn('WebSocket未就緒，丟棄音頻幀');
+                    return;
+                }
+                const aus = state.audioBuffer.length === 0 ? 1 : 2;
+                const payload = {
+                    business: { cmd: 'auw', aus: aus },
+                    data: { status: 1, data: b64Data }
+                };
+                state.audioBuffer.push(b64Data);
+                try {
+                    state.wsConnection.send(JSON.stringify(payload));
+                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}`);
+                } catch (e) {
+                    console.error('發送音訊幀失敗:', e);
+                }
+            }
+
+            function sendAudioEnd() {
+                if (!state.wsReady || !state.wsConnection) return;
+                const payload = {
+                    business: { cmd: 'auw', aus: 4 },
+                    data: { status: 2, data: '' }
+                };
+                try {
+                    state.wsConnection.send(JSON.stringify(payload));
+                    console.log('[WS] 發送尾幀 aus=4');
+                } catch (e) {
+                    console.error('發送尾幀失敗:', e);
+                }
+            }
+
+            // ----- 開始/停止錄音 -----
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
@@ -852,6 +880,7 @@
                             },
                             video: false,
                         });
+                        console.log('✅ 麥克風取得成功');
                     }
                     if (!audioWorkletNode) {
                         await audioContext.audioWorklet.addModule(initWorklet());
@@ -871,6 +900,7 @@
                         };
                         source.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
+                        console.log('✅ AudioWorkletNode 創建成功');
                     }
                     isRecording = true;
                     state.isRecording = true;
@@ -882,7 +912,9 @@
                     recordTimer = setTimeout(() => {
                         if (isRecording) stopRecording(true);
                     }, AUDIO_CONFIG.maxRecordSeconds * 1000);
+                    // 若尚未連接 WS，則建立連接
                     if (!state.wsReady) {
+                        console.log('[WS] 開始連接 WebSocket ...');
                         await connectWebSocket();
                     }
                 } catch (e) {
@@ -898,9 +930,15 @@
                 state.isRecording = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
-                if (state.wsReady) sendAudioEnd();
+                if (state.wsReady) {
+                    sendAudioEnd();
+                } else {
+                    console.warn('WS未就緒，無法發送尾幀');
+                }
                 resetVoiceUI();
-                setStatus(auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...', false);
+                const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
+                setStatus(msg, false);
+                console.log('[錄音] 已停止，等待服務器響應');
             }
 
             function resetVoiceUI() {
@@ -919,41 +957,57 @@
                 const signature = CryptoJS.enc.Base64.stringify(sha);
                 const authOrigin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
                 const auth = btoa(authOrigin);
-                return `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
+                const url = `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
+                console.log('[WS] 構建URL:', url);
+                return url;
             }
 
             async function connectWebSocket() {
-                if (state.wsReady) return;
+                if (state.wsReady) {
+                    console.log('[WS] 已就緒，無需重複連接');
+                    return;
+                }
                 try {
                     const url = buildWSSUrl();
                     state.wsConnection = new WebSocket(url);
                     state.wsConnection.binaryType = 'blob';
                     return new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => reject(new Error('WSS 連線超時')), 10000);
+                        const timeout = setTimeout(() => {
+                            reject(new Error('WSS 連線超時'));
+                        }, 10000);
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
+                            console.log('[WS] 連線成功，發送首幀');
                             sendInitFrame();
                             resolve();
                         };
                         state.wsConnection.onerror = (err) => {
                             clearTimeout(timeout);
-                            console.error('WSS 錯誤:', err);
+                            console.error('[WS] 錯誤:', err);
                             reject(err);
                         };
-                        state.wsConnection.onmessage = (e) => { handleWSMessage(e.data); };
-                        state.wsConnection.onclose = () => { state.wsReady = false;
-                            console.log('WSS 連線關閉'); };
+                        state.wsConnection.onmessage = (e) => {
+                            console.log('[WS] 收到訊息，類型:', typeof e.data);
+                            handleWSMessage(e.data);
+                        };
+                        state.wsConnection.onclose = (e) => {
+                            state.wsReady = false;
+                            console.log(`[WS] 連線關閉，代碼=${e.code}, 原因=${e.reason}`);
+                        };
                     });
                 } catch (e) {
-                    console.error('WSS 連線失敗:', e);
+                    console.error('[WS] 連線失敗:', e);
                     setStatus('⚠️ 語音服務連線失敗，請檢查網路', true);
                     throw e;
                 }
             }
 
             function sendInitFrame() {
-                if (!state.wsReady || !state.wsConnection) return;
+                if (!state.wsReady || !state.wsConnection) {
+                    console.warn('[WS] 未就緒，無法發送首幀');
+                    return;
+                }
                 const char = state.currentChar;
                 if (!char) return;
                 const text = '\uFEFF' + char.char + '\n' + char.pinyinRaw;
@@ -973,27 +1027,9 @@
                     },
                     data: { status: 0 }
                 };
-                state.wsConnection.send(JSON.stringify(payload));
-            }
-
-            function sendAudioChunk(b64Data) {
-                if (!state.wsReady || !state.wsConnection) return;
-                const aus = state.audioBuffer.length === 0 ? 1 : 2;
-                const payload = {
-                    business: { cmd: 'auw', aus: aus },
-                    data: { status: 1, data: b64Data }
-                };
-                state.audioBuffer.push(b64Data);
-                try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送音訊失敗:', e); }
-            }
-
-            function sendAudioEnd() {
-                if (!state.wsReady || !state.wsConnection) return;
-                const payload = {
-                    business: { cmd: 'auw', aus: 4 },
-                    data: { status: 2, data: '' }
-                };
-                try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送尾幀失敗:', e); }
+                const json = JSON.stringify(payload);
+                console.log('[WS] 發送首幀:', json);
+                state.wsConnection.send(json);
             }
 
             function handleWSMessage(data) {
@@ -1001,19 +1037,28 @@
                     let text;
                     if (data instanceof Blob) {
                         const reader = new FileReader();
-                        reader.onload = () => parseWSResult(reader.result);
+                        reader.onload = () => {
+                            const result = reader.result;
+                            console.log('[WS] Blob 轉文字:', result);
+                            parseWSResult(result);
+                        };
                         reader.readAsText(data);
                     } else {
-                        parseWSResult(data);
+                        text = data;
+                        console.log('[WS] 收到文字訊息:', text);
+                        parseWSResult(text);
                     }
-                } catch (e) { console.warn('解析 WSS 訊息失敗:', e); }
+                } catch (e) {
+                    console.error('[WS] 處理訊息異常:', e);
+                }
             }
 
             function parseWSResult(text) {
                 try {
                     const json = JSON.parse(text);
+                    console.log('[WS] 解析 JSON:', json);
                     if (json.code && json.code !== 0) {
-                        console.warn('訊飛 API 錯誤:', json.message);
+                        console.warn('[WS] 訊飛 API 錯誤:', json.message);
                         setStatus('⚠️ 語音評測錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
@@ -1022,10 +1067,20 @@
                         const binaryStr = atob(xmlB64);
                         const decoder = new TextDecoder('utf-8');
                         const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
+                        console.log('[WS] 評測結果 XML:', xml);
                         const score = extractScoreFromXML(xml);
-                        if (score !== null) handleVoiceResult(score);
+                        if (score !== null) {
+                            console.log('[WS] 得分:', score);
+                            handleVoiceResult(score);
+                        } else {
+                            console.warn('[WS] 無法從 XML 提取分數');
+                        }
+                    } else {
+                        console.log('[WS] 暫無結果數據');
                     }
-                } catch (e) { console.warn('解析結果失敗:', e); }
+                } catch (e) {
+                    console.error('[WS] 解析結果失敗:', e, '原始文本:', text);
+                }
             }
 
             function extractScoreFromXML(xml) {
@@ -1175,8 +1230,12 @@
             function updateScoreBadge(text) { scoreBadge.textContent = text; }
 
             function closeWS() {
-                if (state.wsConnection) { try { state.wsConnection.close(); } catch (e) {} state.wsConnection = null; }
+                if (state.wsConnection) {
+                    try { state.wsConnection.close(); } catch (e) {}
+                    state.wsConnection = null;
+                }
                 state.wsReady = false;
+                console.log('[WS] 已關閉連接');
             }
 
             // ========== 13. 圖片預加載 ==========
@@ -1187,11 +1246,12 @@
                         img.crossOrigin = 'anonymous';
                         img.onload = () => {
                             char.img = img;
+                            console.log(`✅ 圖片載入成功: ${char.imgSrc}`);
                             resolve();
                         };
                         img.onerror = () => {
-                            console.warn(`圖片加載失敗: ${char.imgSrc}，將使用備用線條`);
-                            // 回退：創建一個備用圖形（簡單線條）
+                            console.warn(`⚠️ 圖片載入失敗: ${char.imgSrc}，使用佔位圖`);
+                            // 創建佔位圖
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
                             fallbackCanvas.height = 200;
@@ -1200,15 +1260,11 @@
                             fctx.fillRect(0, 0, 200, 200);
                             fctx.strokeStyle = '#000000';
                             fctx.lineWidth = 4;
-                            // 畫一個簡單的 X 作為佔位
-                            fctx.beginPath();
-                            fctx.moveTo(20, 20);
-                            fctx.lineTo(180, 180);
-                            fctx.stroke();
-                            fctx.beginPath();
-                            fctx.moveTo(180, 20);
-                            fctx.lineTo(20, 180);
-                            fctx.stroke();
+                            fctx.font = '60px sans-serif';
+                            fctx.textAlign = 'center';
+                            fctx.textBaseline = 'middle';
+                            fctx.fillStyle = '#000';
+                            fctx.fillText(char.char, 100, 100);
                             const imgData = fallbackCanvas.toDataURL();
                             const fallbackImg = new Image();
                             fallbackImg.onload = () => {
@@ -1245,7 +1301,8 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (使用標準字形圖片)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (使用繁體圖片名 + 詳細日誌)');
+                console.log('📌 請確保 images/ 目錄下存在以下圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
