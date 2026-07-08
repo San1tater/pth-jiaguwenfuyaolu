@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>甲骨文伏妖錄</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Helvetica Neue', '標楷體', Arial, sans-serif;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* 禁止滾動條 */
+            display: flex;
+            flex-direction: row;
+            background-color: #1a1a1d; /* 深色背景增添神祕感 */
+            color: #ecf0f1;
+        }
+        
+        /* === 左側：修煉區 (描紅與唸咒) === */
+        #left-panel {
+            width: 50%;
+            height: 100%;
+            background-color: #f4ebd8; /* 仿古紙張色 */
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 4px solid #8b7355;
+            position: relative;
+        }
+
+        /* 提示與拼音區域 */
+        #prompt-area {
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #pinyin-display {
+            font-size: 40px;
+            font-family: Arial, sans-serif;
+            color: #c0392b;
+            font-weight: bold;
+            opacity: 0; /* 初始隱藏，過關後顯示 */
+            transition: opacity 0.5s;
+            letter-spacing: 2px;
+        }
+        #instruction-text {
+            font-size: 22px;
+            color: #5a4634;
+            font-weight: bold;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.6);
+            padding: 5px 15px;
+            border-radius: 8px;
+        }
+
+        /* 畫布區域 (包含描紅底圖與繪圖層) */
+        #canvas-container {
+            width: 350px;
+            height: 350px;
+            position: relative;
+            background-color: #fff;
+            border: 4px dashed #a68b6a;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            touch-action: none;
+        }
+        #trace-guide {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.15; /* 描紅浮水印效果 */
+            pointer-events: none; /* 讓筆跡穿透 */
+        }
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            cursor: crosshair;
+        }
+
+        /* 控制按鈕 */
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #5a4634;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
+        button:disabled { background-color: #bdc3c7; color: #7f8c8d; cursor: not-allowed; box-shadow: none; }
+        
+        #recordBtn { background-color: #c0392b; }
+        #recordBtn:hover:not(:disabled) { background-color: #922b21; }
+        #nextBtn { background-color: #27ae60; display: none; }
+
+        /* === 右側：伏妖區 (展示現代漢字與妖怪圖片) === */
+        #right-panel {
+            width: 50%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #34495e 0%, #1a1a1d 80%);
+            position: relative;
+        }
+
+        #monster-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #monster-container.revealed {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 現代中文字 */
+        #modern-char {
+            font-family: 'BiauKai', '標楷體', serif;
+            font-size: 160px;
+            color: #f1c40f;
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.5);
+            margin-bottom: 20px;
+        }
+
+        /* 妖怪圖片 (使用大型 Emoji 呈現高畫質圖像) */
+        #monster-pic {
+            font-size: 180px;
+            line-height: 1;
+            filter: drop-shadow(0 0 30px rgba(255,255,255,0.4));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* 封印陣法裝飾 (背景) */
+        #magic-circle {
+            position: absolute;
+            width: 500px; height: 500px;
+            border: 2px dashed rgba(241, 196, 15, 0.2);
+            border-radius: 50%;
+            animation: spin 30s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="left-panel">
+        <div id="prompt-area">
+            <div id="pinyin-display"></div>
+            <div id="instruction-text">請描寫下方的甲骨文字形</div>
+        </div>
+        
+        <div id="canvas-container">
+            <img id="trace-guide" src="" alt="甲骨文底圖">
+            <canvas id="writeCanvas" width="350" height="350"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="clearBtn" onclick="clearCanvas()">清除重寫</button>
+            <button id="checkBtn" onclick="checkWriting()">驗證符文</button>
+            <button id="recordBtn" onclick="startVoiceEvaluation()" disabled>🎙️ 唸咒</button>
+            <button id="nextBtn" onclick="initGame()">尋找下個妖怪</button>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <div id="magic-circle"></div>
+        <div id="monster-container">
+            <div id="modern-char"></div>
+            <div id="monster-pic"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 系統設定與字庫 (包含指定的甲骨文與對應妖怪)
+        // ==========================================
+        const XF_APPID = '2600b137';
+        const XF_API_KEY = '8b012124ed213c06974cd469f29e134b';
+        const XF_API_SECRET = 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj';
+
+        const dictionary = [
+            { char: '羊', pinyin: 'yáng', emoji: '🐑', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L50,80 M20,30 L80,30 M30,50 L70,50 M30,20 L50,40 L70,20 M30,70 L70,70" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
+            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
+            { char: '牛', pinyin: 'niú', emoji: '🐮', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,20 C40,40 60,40 80,20 M50,30 L50,90 M30,60 L70,60" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
+            { char: '鳥', pinyin: 'niǎo', emoji: '🐦', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,40 C30,20 50,20 50,20 L60,30 C80,30 90,50 90,50 C90,50 60,70 50,70 C30,70 30,50 30,40 Z M30,40 L15,45 L30,50 M60,70 L55,90 M70,65 L70,90 M45,35 A3,3 0 1,1 45.1,35" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' },
+            { char: '魚', pinyin: 'yú', emoji: '🐟', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L80,50 L50,80 L20,50 Z M20,50 L50,50 M80,20 L80,80 L65,50 Z M40,35 L45,35 M40,65 L45,65" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' }
+        ];
+
+        let currentTarget = null;
+        let isTracingPassed = false;
+        const instructionEl = document.getElementById('instruction-text');
+        const pinyinEl = document.getElementById('pinyin-display');
+
+        // ==========================================
+        // 2. 遊戲流程控制
+        // ==========================================
+        function initGame() {
+            // 隨機抽取對手
+            currentTarget = dictionary[Math.floor(Math.random() * dictionary.length)];
+            isTracingPassed = false;
+            
+            // 重置 UI
+            clearCanvas();
+            document.getElementById('trace-guide').src = currentTarget.svg;
+            document.getElementById('monster-container').classList.remove('revealed');
+            pinyinEl.style.opacity = 0;
+            pinyinEl.innerText = currentTarget.pinyin;
+            instructionEl.innerText = "請描寫下方的甲骨文字形";
+            
+            document.getElementById('checkBtn').style.display = 'inline-block';
+            document.getElementById('recordBtn').disabled = true;
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+
+        // ==========================================
+        // 3. 畫布操作邏輯
+        // ==========================================
+        const canvas = document.getElementById('writeCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let isDrawing = false;
+        const BRUSH_SIZE = 12; // 用戶筆刷粗細
+
+        ctx.lineWidth = BRUSH_SIZE;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#2c3e50';
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDrawing(e) {
+            if(isTracingPassed) return; // 過關後鎖定畫布
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            // 畫一個點以支援單擊
+            ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
+            ctx.stroke();
+        }
+
+        function draw(e) {
+            if (!isDrawing || isTracingPassed) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+
+        canvas.addEventListener('pointerdown', startDrawing);
+        canvas.addEventListener('pointermove', draw);
+        canvas.addEventListener('pointerup', stopDrawing);
+        canvas.addEventListener('pointerout', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function clearCanvas() {
+            if(isTracingPassed) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(!isTracingPassed) instructionEl.innerText = "請描寫下方的甲骨文字形";
+        }
+
+        // ==========================================
+        // 4. 描紅相似度評分算法 (前端 F1-Score 像素比對)
+        // ==========================================
+        async function checkWriting() {
+            instructionEl.innerText = "正在鑑定符文...";
+            const score = await calculateTracingScore();
+            
+            if (score >= 60) {
+                isTracingPassed = true;
+                instructionEl.innerText = "符文生效！用普通話讀出咒語，讓妖怪現形";
+                pinyinEl.style.opacity = 1;
+                document.getElementById('checkBtn').style.display = 'none';
+                document.getElementById('recordBtn').disabled = false;
+            } else {
+                instructionEl.innerText = `符合度：${score}分。畫得不像，請清除重試！`;
+            }
+        }
+
+        function calculateTracingScore() {
+            return new Promise((resolve) => {
+                const w = canvas.width; const h = canvas.height;
+                const hCanvas = document.createElement('canvas');
+                hCanvas.width = w; hCanvas.height = h;
+                const hCtx = hCanvas.getContext('2d', { willReadFrequently: true });
+
+                const getSvgPixels = (widthSetting) => {
+                    return new Promise((res) => {
+                        hCtx.clearRect(0, 0, w, h);
+                        const img = new Image();
+                        img.onload = () => {
+                            hCtx.drawImage(img, 0, 0, w, h);
+                            res(hCtx.getImageData(0, 0, w, h).data);
+                        };
+                        // 修改 SVG 粗細並轉黑以利讀取 Alpha
+                        const modSvg = currentTarget.svg
+                            .replace(/stroke="%23[0-9a-fA-F]+"/g, 'stroke="black"')
+                            .replace(/stroke-width="\d+"/g, `stroke-width="${widthSetting}"`);
+                        img.src = modSvg;
+                    });
+                };
+
+                (async () => {
+                    // 1. 取得目標軌跡所需的最少墨水量 (模擬用戶筆刷粗細)
+                    const expectedData = await getSvgPixels(BRUSH_SIZE);
+                    // 2. 取得寬容判定區 (允許用戶稍微畫歪的粗邊界)
+                    const toleranceData = await getSvgPixels(40);
+                    // 3. 取得用戶實際作畫像素
+                    const userData = ctx.getImageData(0, 0, w, h).data;
+
+                    let expectedPixels = 0;
+                    let userPixels = 0;
+                    let validUserPixels = 0; // 在寬容區內的像素
+
+                    for (let i = 3; i < userData.length; i += 4) {
+                        if (expectedData[i] > 50) expectedPixels++;
+                        if (userData[i] > 50) {
+                            userPixels++;
+                            if (toleranceData[i] > 50) validUserPixels++;
+                        }
+                    }
+
+                    if (userPixels === 0) return resolve(0);
+
+                    // 精確度：是否有亂塗鴉到框線外？
+                    const precision = validUserPixels / userPixels; 
+                    // 覆蓋率：是否有把字畫完？ (打 7 折作為寬容標準，不必 100% 填滿)
+                    const coverage = Math.min(1.0, validUserPixels / (expectedPixels * 0.7)); 
+
+                    let score = 0;
+                    if (precision > 0 && coverage > 0) {
+                        score = 2 * (precision * coverage) / (precision + coverage);
+                    }
+                    resolve(Math.round(score * 100));
+                })();
+            });
+        }
+
+        // ==========================================
+        // 5. 科大訊飛語音評測與展示
+        // ==========================================
+        let audioContext, scriptProcessor, mediaStream;
+
+        function getIseAuthUrl() {
+            const host = "ise-api.xfyun.cn"; const path = "/v2/open-ise";
+            const date = new Date().toUTCString();
+            const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
+            const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, XF_API_SECRET);
+            const signature = CryptoJS.enc.Base64.stringify(signatureSha);
+            const authorizationOrigin = `api_key="${XF_API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
+            return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
+        }
+
+        function downsampleBuffer(buffer, sampleRate, outSampleRate) {
+            if (outSampleRate === sampleRate) return buffer;
+            const ratio = sampleRate / outSampleRate;
+            const res = new Float32Array(Math.round(buffer.length / ratio));
+            let offset = 0, bufOffset = 0;
+            while (offset < res.length) {
+                let nextOffset = Math.round((offset + 1) * ratio);
+                let accum = 0, count = 0;
+                for (let i = bufOffset; i < nextOffset && i < buffer.length; i++) { accum += buffer[i]; count++; }
+                res[offset] = accum / count;
+                offset++; bufOffset = nextOffset;
+            }
+            return res;
+        }
+
+        async function startVoiceEvaluation() {
+            const btn = document.getElementById('recordBtn');
+            btn.disabled = true;
+            instructionEl.innerText = "🔴 請允許麥克風並朗讀咒語...";
+
+            try { mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } 
+            catch (e) {
+                instructionEl.innerText = "❌ 麥克風授權失敗！";
+                btn.disabled = false; return;
+            }
+
+            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」`;
+            const ws = new WebSocket(getIseAuthUrl());
+
+            ws.onopen = () => {
+                ws.send(JSON.stringify({
+                    common: { app_id: XF_APPID },
+                    business: { category: "read_syllable", ent: "cn_vip", aue: "raw", cmd: "start", text: btoa(unescape(encodeURIComponent('\uFEFF' + currentTarget.char))) },
+                    data: { status: 0, data: "", encoding: "raw" }
+                }));
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+                source.connect(scriptProcessor); scriptProcessor.connect(audioContext.destination);
+
+                scriptProcessor.onaudioprocess = (e) => {
+                    const input = e.inputBuffer.getChannelData(0);
+                    const downsampled = downsampleBuffer(input, audioContext.sampleRate, 16000);
+                    const pcm = new Int16Array(downsampled.length);
+                    for (let i = 0; i < downsampled.length; i++) {
+                        let s = Math.max(-1, Math.min(1, downsampled[i]));
+                        pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    let binary = ''; const bytes = new Uint8Array(pcm.buffer);
+                    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                    
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ data: { status: 1, data: window.btoa(binary) } }));
+                    }
+                };
+
+                setTimeout(() => stopRecording(ws), 3000); // 錄音3秒
+            };
+
+            ws.onmessage = (e) => {
+                const res = JSON.parse(e.data);
+                if (res.code !== 0) {
+                    instructionEl.innerText = `系統錯誤：${res.code}`;
+                    stopRecording(ws); return;
+                }
+                if (res.data && res.data.status === 2) {
+                    parseIseResult(decodeURIComponent(escape(atob(res.data.data))));
+                    ws.close();
+                }
+            };
+        }
+
+        function stopRecording(ws) {
+            if (scriptProcessor) scriptProcessor.disconnect();
+            if (audioContext) audioContext.close();
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ data: { status: 2, data: "" } }));
+            document.getElementById('recordBtn').disabled = false;
+        }
+
+        function parseIseResult(xmlStr) {
+            try {
+                const xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
+                const score = parseFloat(xmlDoc.getElementsByTagName("read_syllable")[0].getAttribute("total_score") || 0);
+                
+                if (score > 60) {
+                    instructionEl.innerText = "✨ 咒語成功！妖怪現形了！";
+                    revealMonster();
+                } else {
+                    instructionEl.innerText = `發音不夠準 (${score.toFixed(1)}分)，再來一次！`;
+                }
+            } catch (err) { instructionEl.innerText = "解析評測結果失敗"; }
+        }
+
+        function revealMonster() {
+            document.getElementById('recordBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            
+            document.getElementById('modern-char').innerText = currentTarget.char;
+            document.getElementById('monster-pic').innerText = currentTarget.emoji;
+            
+            document.getElementById('monster-container').classList.add('revealed');
+        }
+
+        // 初始化執行
+        window.onload = initGame;
+    </script>
+</body>
+</html>
