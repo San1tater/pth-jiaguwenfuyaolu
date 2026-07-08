@@ -391,21 +391,8 @@
             animation: spinArray 30s linear infinite;
         }
 
-        #score-badge {
-            position: absolute;
-            bottom: 1.5vh;
-            right: 1.5vw;
-            font-size: clamp(0.7rem, 1.2vh, 1rem);
-            color: rgba(100, 80, 60, 0.3);
-            background: rgba(255, 255, 255, 0.6);
-            padding: 0.3vh 0.8vw;
-            border-radius: 20px;
-            border: 1px solid rgba(180, 150, 100, 0.15);
-            pointer-events: none;
-            z-index: 10;
-            font-weight: 400;
-            letter-spacing: 0.04em;
-        }
+        /* ===== 移除左下角狀態提示 ===== */
+        /* #score-badge 已刪除 */
 
         /* ===== 載入遮罩 ===== */
         #loading-overlay {
@@ -469,7 +456,7 @@
                 <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
                 <button class="btn btn-success" id="btnNext" style="display:none;">🔮 尋找下個妖怪</button>
             </div>
-            <div id="score-badge">靈力 · 待啟動</div>
+            <!-- 已移除左下角狀態提示 -->
         </div>
 
         <div id="right-panel">
@@ -499,7 +486,7 @@
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
             const THRESHOLDS = { drawPass: 45, voicePass: 60 };
 
-            // ========== 2. 字庫（使用圖片，文件名改為繁體） ==========
+            // ========== 2. 字庫 ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -559,6 +546,7 @@
                 wsConnection: null,
                 wsReady: false,
                 imagesLoaded: false,
+                usedCharIds: [], // 已用過的字 ID 列表，用於去重
             };
 
             // ========== 4. DOM ==========
@@ -575,7 +563,6 @@
             const placeholderArea = $('placeholder-area');
             const modernChar = $('modern-char');
             const animalEmoji = $('animal-emoji');
-            const scoreBadge = $('score-badge');
             const loadingOverlay = $('loading-overlay');
             const loadingText = $('loading-text');
 
@@ -826,7 +813,6 @@
                 }
             }
 
-            // ----- 音頻發送相關 -----
             function sendAudioChunk(b64Data) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
@@ -860,7 +846,6 @@
                 }
             }
 
-            // ----- 開始/停止錄音 -----
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
@@ -912,7 +897,6 @@
                     recordTimer = setTimeout(() => {
                         if (isRecording) stopRecording(true);
                     }, AUDIO_CONFIG.maxRecordSeconds * 1000);
-                    // 若尚未連接 WS，則建立連接
                     if (!state.wsReady) {
                         console.log('[WS] 開始連接 WebSocket ...');
                         await connectWebSocket();
@@ -1101,7 +1085,7 @@
                     setStatus('🎉 咒語生效！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 咒語靈力不足 (${state.voiceScore}分)，再試一次！`, true);
+                    setStatus(`😤 咒語靈力不足，再試一次！`, true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1126,7 +1110,6 @@
                 btnClear.disabled = true;
                 state.canvasLocked = true;
                 closeWS();
-                updateScoreBadge(`✨ 靈力 ${state.drawScore}/${state.voiceScore}`);
             }
 
             // ========== 11. 流程控制 ==========
@@ -1157,17 +1140,33 @@
                 btnVoice.disabled = true;
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
-                updateScoreBadge('靈力 · 待啟動');
             }
 
-            function pickRandomChar() { return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]; }
+            // ---- 不重複抽取邏輯 ----
+            function pickRandomChar() {
+                const total = CHARACTERS.length;
+                // 如果所有字都已用過，重置列表
+                if (state.usedCharIds.length >= total) {
+                    state.usedCharIds = [];
+                    console.log('所有字已用過，重置記錄');
+                }
+                // 找出尚未使用的字
+                const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
+                if (available.length === 0) {
+                    // 理論上不會發生，但以防萬一
+                    state.usedCharIds = [];
+                    return CHARACTERS[Math.floor(Math.random() * total)];
+                }
+                const picked = available[Math.floor(Math.random() * available.length)];
+                state.usedCharIds.push(picked.id);
+                return picked;
+            }
 
             function initLevel() {
                 resetForNewChar();
                 state.currentChar = pickRandomChar();
                 renderOracle();
                 setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
-                updateScoreBadge(`🎯 目標: ${state.currentChar.char}`);
                 btnVoice.disabled = true;
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
@@ -1191,17 +1190,15 @@
                     if (score >= THRESHOLDS.drawPass) {
                         state.canvasLocked = true;
                         state.phase = 'voice';
-                        setStatus(`✅ 符文契合度 ${score}分！ 咒語已解鎖`, false);
+                        setStatus(`✅ 符文契合度合格！咒語已解鎖`, false);
                         pinyinDisplay.textContent = state.currentChar.pinyinTone;
                         pinyinDisplay.style.display = 'block';
                         setTimeout(() => pinyinDisplay.classList.add('show'), 50);
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
-                        updateScoreBadge(`✅ 符文 ${score}分 · 請唸咒`);
                         setStatus(`🗣️ 請唸出咒語：<span class="highlight">${state.currentChar.pinyinTone}</span>`, false);
                     } else {
-                        setStatus(`❌ 符文契合度 ${score}分，再努力描寫！ (需 ≥ ${THRESHOLDS.drawPass}分)`, true);
-                        updateScoreBadge(`❌ ${score}分 · 未過關`);
+                        setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
                     }
                 }, 500);
             }
@@ -1227,8 +1224,6 @@
                 statusText.style.color = isError ? '#a94442' : '#3a2e1e';
             }
 
-            function updateScoreBadge(text) { scoreBadge.textContent = text; }
-
             function closeWS() {
                 if (state.wsConnection) {
                     try { state.wsConnection.close(); } catch (e) {}
@@ -1251,7 +1246,6 @@
                         };
                         img.onerror = () => {
                             console.warn(`⚠️ 圖片載入失敗: ${char.imgSrc}，使用佔位圖`);
-                            // 創建佔位圖
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
                             fallbackCanvas.height = 200;
@@ -1301,8 +1295,8 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (使用繁體圖片名 + 詳細日誌)');
-                console.log('📌 請確保 images/ 目錄下存在以下圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (去重 + 移除分數提示)');
+                console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
