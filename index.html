@@ -61,14 +61,8 @@
             animation: breatheGlow 8s ease-in-out infinite alternate;
         }
         @keyframes breatheGlow {
-            0% {
-                opacity: 0.3;
-                transform: scale(1);
-            }
-            100% {
-                opacity: 0.8;
-                transform: scale(1.05);
-            }
+            0% { opacity: 0.3; transform: scale(1); }
+            100% { opacity: 0.8; transform: scale(1.05); }
         }
 
         /* ===== 狀態提示 ===== */
@@ -115,14 +109,8 @@
             animation: pinyinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         @keyframes pinyinPop {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) translateY(10px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            0% { opacity: 0; transform: scale(0.6) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         /* ===== 畫布 ===== */
@@ -197,9 +185,7 @@
             white-space: nowrap;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
-        .btn:active {
-            transform: scale(0.94);
-        }
+        .btn:active { transform: scale(0.94); }
         .btn-primary {
             background: linear-gradient(135deg, #d4a017, #b8860b);
             color: #fff;
@@ -218,9 +204,7 @@
             border-color: rgba(180, 150, 100, 0.2);
             color: #3a2e1e;
         }
-        .btn-secondary:active {
-            background: rgba(200, 180, 160, 0.3);
-        }
+        .btn-secondary:active { background: rgba(200, 180, 160, 0.3); }
         .btn-secondary:disabled {
             opacity: 0.3;
             cursor: not-allowed;
@@ -243,13 +227,8 @@
             background: rgba(200, 70, 70, 0.1);
         }
         @keyframes pulseMic {
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(192, 57, 43, 0.15);
-            }
-            50% {
-                box-shadow: 0 0 30px rgba(192, 57, 43, 0.3), 0 0 60px rgba(192, 57, 43, 0.05);
-            }
+            0%, 100% { box-shadow: 0 0 10px rgba(192, 57, 43, 0.15); }
+            50% { box-shadow: 0 0 30px rgba(192, 57, 43, 0.3), 0 0 60px rgba(192, 57, 43, 0.05); }
         }
         .btn-success {
             background: linear-gradient(135deg, #5cb85c, #449d44);
@@ -262,9 +241,7 @@
             border-color: rgba(180, 150, 100, 0.15);
             color: #6b5a44;
         }
-        .btn-clear:active {
-            background: rgba(200, 180, 160, 0.35);
-        }
+        .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
         /* ===== 右側面板 ===== */
         #right-panel {
@@ -304,12 +281,8 @@
             pointer-events: none;
         }
         @keyframes spinArray {
-            0% {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
-            100% {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
         /* ===== 妖怪展示 ===== */
@@ -326,18 +299,10 @@
             width: 100%;
             max-width: 500px;
         }
-        #reveal-area.show {
-            display: flex;
-        }
+        #reveal-area.show { display: flex; }
         @keyframes revealAppear {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) rotate(-8deg);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) rotate(0deg);
-            }
+            0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
         #modern-char {
             font-size: clamp(6rem, 16vh, 12rem);
@@ -349,12 +314,8 @@
             animation: charGlow 3s ease-in-out infinite alternate;
         }
         @keyframes charGlow {
-            0% {
-                text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05);
-            }
-            100% {
-                text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15);
-            }
+            0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
+            100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
         #animal-emoji {
             font-size: clamp(8rem, 22vh, 16rem);
@@ -363,13 +324,8 @@
             filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
         }
         @keyframes floatAnimal {
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-20px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
 
         #placeholder-area {
@@ -423,12 +379,8 @@
             margin-bottom: 2vh;
         }
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -481,6 +433,7 @@
             };
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
             const THRESHOLDS = { drawPass: 45, voicePass: 60 };
+            const MIN_RECORD_DURATION = 1000; // 最短录音时长（毫秒）
 
             // ========== 2. 字庫（圖片文件名使用繁體） ==========
             const CHARACTERS = [{
@@ -542,9 +495,9 @@
                 wsConnection: null,
                 wsReady: false,
                 usedCharIds: [],
-                // 新增：用於控制刷新
-                isFlushing: false,
-                flushResolve: null,
+                recordStartTime: 0,
+                minDurationTimer: null,
+                isFinalizing: false,
             };
 
             // ========== 4. DOM ==========
@@ -740,7 +693,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) — 增加 flush 功能 ==========
+            // ========== 7. 語音錄製 (Worklet) ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -748,48 +701,9 @@
               this.buffer = [];
               this.chunkSize = 640;
               this.running = true;
-              this.flushing = false;
-              this.port.onmessage = (e) => {
-                if (e.data.type === 'flush') {
-                  this.flushing = true;
-                  // 强制刷新缓冲区
-                  this.flushBuffer();
-                }
-              };
-            }
-            flushBuffer() {
-              if (this.buffer.length === 0) {
-                this.port.postMessage({ type: 'flushed' });
-                return;
-              }
-              // 合并所有数据
-              let totalLen = 0;
-              for (const chunk of this.buffer) totalLen += chunk.length;
-              const merged = new Float32Array(totalLen);
-              let offset = 0;
-              for (const chunk of this.buffer) {
-                merged.set(chunk, offset);
-                offset += chunk.length;
-              }
-              this.buffer = [];
-              // 发送剩余数据（即使不足 chunkSize）
-              const pcm = new Int16Array(merged.length);
-              for (let i = 0; i < merged.length; i++) {
-                let s = merged[i];
-                s = Math.max(-1, Math.min(1, s));
-                pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-              }
-              this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: true }, [pcm.buffer]);
-              // 通知主线程刷新完成
-              this.port.postMessage({ type: 'flushed' });
             }
             process(inputs, outputs, parameters) {
               if (!this.running) return false;
-              // 如果正在刷新，不处理新数据（但此时应该已经停止采集）
-              if (this.flushing) {
-                // 如果还有数据未发送，继续发送（但process可能不会被调用）
-                return false;
-              }
               const input = inputs[0];
               if (!input || input.length === 0) return true;
               const channelData = input[0];
@@ -806,7 +720,6 @@
                 }
                 this.buffer = [];
                 const sendData = merged.slice(0, this.chunkSize);
-                // 剩余数据放回
                 if (merged.length > this.chunkSize) {
                   const remaining = merged.slice(this.chunkSize);
                   this.buffer.push(remaining);
@@ -817,7 +730,7 @@
                   s = Math.max(-1, Math.min(1, s));
                   pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
-                this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: false }, [pcm.buffer]);
+                this.port.postMessage({ type: 'audio', buffer: pcm.buffer }, [pcm.buffer]);
               }
               return true;
             }
@@ -842,13 +755,12 @@
             let sourceNode = null;
 
             // ---------- 音頻發送 ----------
-            function sendAudioChunk(b64Data, isFlush = false) {
+            function sendAudioChunk(b64Data) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
                     return;
                 }
-                // 如果是刷新帧，使用 aus=2（中间帧），但通常刷新帧是最后的，但还需要尾帧，所以这里用 aus=2
-                const aus = isFlush ? 2 : (state.audioBuffer.length === 0 ? 1 : 2);
+                const aus = state.audioBuffer.length === 0 ? 1 : 2;
                 const payload = {
                     business: { cmd: 'auw', aus: aus },
                     data: { status: 1, data: b64Data }
@@ -856,7 +768,7 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
+                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}`);
                 } catch (e) {
                     console.error('發送音訊幀失敗:', e);
                 }
@@ -929,15 +841,7 @@
                                     binary += String.fromCharCode(bytes[i]);
                                 }
                                 const b64 = btoa(binary);
-                                sendAudioChunk(b64, e.data.isFlush || false);
-                            }
-                            // 处理刷新完成消息
-                            if (e.data.type === 'flushed') {
-                                console.log('[Worklet] 刷新完成');
-                                if (state.flushResolve) {
-                                    state.flushResolve();
-                                    state.flushResolve = null;
-                                }
+                                sendAudioChunk(b64);
                             }
                         };
                         sourceNode.connect(audioWorkletNode);
@@ -946,6 +850,7 @@
                     }
                     isRecording = true;
                     state.isRecording = true;
+                    state.recordStartTime = Date.now();
                     btnVoice.textContent = '⏹️ 停止錄音';
                     btnVoice.classList.add('recording');
                     btnVoice.disabled = false;
@@ -965,16 +870,50 @@
                 }
             }
 
-            // ---------- 停止錄音（核心修改） ----------
+            // ---------- 停止錄音（核心修改：保證最短時長） ----------
             function stopRecording(auto = false) {
                 if (!isRecording) return;
-                // 标记停止录音，Worklet 将不再接收新数据
+                if (state.isFinalizing) return; // 避免重複
+
+                // 計算已錄音時長
+                const elapsed = Date.now() - state.recordStartTime;
+                const remaining = MIN_RECORD_DURATION - elapsed;
+
+                if (remaining > 0) {
+                    // 時長不足，延遲真正停止
+                    console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
+                    // 立即更新 UI 為等待狀態
+                    isRecording = false;
+                    state.isRecording = false;
+                    btnVoice.disabled = true;
+                    btnVoice.textContent = '⏳ 處理中...';
+                    btnVoice.classList.remove('recording');
+                    setStatus('⏳ 咒語已送出，請等候 ...', false);
+
+                    // 設置定時器，在剩餘時間後真正執行停止
+                    if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
+                    state.minDurationTimer = setTimeout(() => {
+                        state.minDurationTimer = null;
+                        finalizeStop();
+                    }, remaining);
+                } else {
+                    // 時長足夠，立即停止
+                    finalizeStop();
+                }
+            }
+
+            // ---------- 最終停止（發送尾幀，斷開資源） ----------
+            function finalizeStop() {
+                if (state.isFinalizing) return;
+                state.isFinalizing = true;
+
+                // 標記錄音已停止，不再接收新數據
                 isRecording = false;
                 state.isRecording = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
 
-                // 先断开 source，停止采集
+                // 斷開 source，停止採集
                 if (sourceNode) {
                     try {
                         sourceNode.disconnect();
@@ -982,56 +921,41 @@
                     } catch (e) {}
                 }
 
-                // 发送 flush 指令给 Worklet，强制刷新剩余缓冲区
-                if (audioWorkletNode) {
-                    console.log('[Worklet] 發送 flush 指令');
-                    audioWorkletNode.port.postMessage({ type: 'flush' });
-                    // 等待刷新完成
-                    const flushPromise = new Promise((resolve) => {
-                        state.flushResolve = resolve;
-                        // 设置超时，防止永远等待
-                        setTimeout(() => {
-                            console.warn('[Worklet] flush 超時，強制繼續');
-                            if (state.flushResolve) {
-                                state.flushResolve();
-                                state.flushResolve = null;
-                            }
-                        }, 300);
-                    });
-                    flushPromise.then(() => {
-                        // 刷新完成后，发送尾帧
-                        if (state.wsReady) {
-                            sendAudioEnd();
-                        } else {
-                            console.warn('WS未就緒，無法發送尾幀');
-                        }
-                        // 断开 Worklet
-                        if (audioWorkletNode) {
-                            try {
-                                audioWorkletNode.disconnect();
-                                audioWorkletNode = null;
-                            } catch (e) {}
-                        }
-                        resetVoiceUI();
-                        const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
-                        setStatus(msg, false);
-                        console.log('[錄音] 已停止，等待服務器響應');
-                    });
-                } else {
-                    // 如果没有 Worklet，直接发送尾帧
+                // 等待一個短時間讓 Worklet 處理完剩餘緩衝區（自然 flush）
+                const waitFlush = () => {
+                    // 發送尾幀
                     if (state.wsReady) {
                         sendAudioEnd();
+                    } else {
+                        console.warn('WS未就緒，無法發送尾幀');
                     }
+                    // 斷開 Worklet
+                    if (audioWorkletNode) {
+                        try {
+                            audioWorkletNode.disconnect();
+                            audioWorkletNode = null;
+                        } catch (e) {}
+                    }
+                    // 重置 UI
                     resetVoiceUI();
-                    const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
-                    setStatus(msg, false);
-                }
+                    setStatus('⏳ 等待咒語評測 ...', false);
+                    console.log('[錄音] 已停止，等待服務器響應');
+                    state.isFinalizing = false;
+                };
+
+                // 為了安全，給 Worklet 一點時間處理剩餘數據，然後發送尾幀
+                setTimeout(waitFlush, 100);
             }
 
             function resetVoiceUI() {
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
                 btnVoice.disabled = (state.phase !== 'voice');
+                if (state.minDurationTimer) {
+                    clearTimeout(state.minDurationTimer);
+                    state.minDurationTimer = null;
+                }
+                state.isFinalizing = false;
             }
 
             // ========== 8. WebSocket 與訊飛 API ==========
@@ -1238,6 +1162,8 @@
                 state.wsReady = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
+                if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
+                    state.minDurationTimer = null; }
                 if (audioWorkletNode) {
                     try { audioWorkletNode.disconnect(); } catch (e) {}
                     audioWorkletNode = null;
@@ -1246,6 +1172,7 @@
                     try { sourceNode.disconnect(); } catch (e) {}
                     sourceNode = null;
                 }
+                state.isFinalizing = false;
                 drawHistory = [];
                 renderOracle();
                 revealArea.classList.remove('show');
@@ -1412,7 +1339,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (強制刷新緩衝區，說完即停)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (強制最短錄音時長 1 秒)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
