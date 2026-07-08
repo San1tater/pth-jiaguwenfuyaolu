@@ -1,621 +1,1668 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 最終版</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <title>甲骨文伏妖錄</title>
+
+    <!-- CryptoJS for HMAC-SHA256 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
+    </script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* ===== 全局重置 & 滿版設定 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
         body {
-            font-family: 'Helvetica Neue', '標楷體', Arial, sans-serif;
-            width: 100vw; height: 100vh; overflow: hidden;
-            display: flex; flex-direction: row;
-            background-color: #1a1a1d; color: #ecf0f1;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #0a0a0f;
+            font-family: 'PingFang TC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+            touch-action: none;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
+
+        /* ===== 主容器 ===== */
+        #app {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(ellipse at 50% 50%, #1a1a2e, #0a0a0f);
+        }
+
+        /* ===== 左側面板 ===== */
         #left-panel {
-            width: 50%; height: 100%;
-            background-color: #f4ebd8; color: #333;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            border-right: 4px solid #8b7355; position: relative;
+            flex: 0 0 50%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2vh 2vw;
+            background: rgba(20, 18, 30, 0.7);
+            backdrop-filter: blur(4px);
+            border-right: 1px solid rgba(255, 215, 100, 0.15);
+            position: relative;
+            overflow: hidden;
         }
-        #prompt-area {
-            height: 100px; display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-end;
-            margin-bottom: 20px; text-align: center;
+
+        #left-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 40%, rgba(255, 180, 50, 0.03), transparent 60%);
+            pointer-events: none;
+            animation: breatheGlow 8s ease-in-out infinite alternate;
         }
+
+        @keyframes breatheGlow {
+            0% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+
+        /* ===== 提示資訊區 ===== */
+        #status-area {
+            width: 100%;
+            max-width: 580px;
+            text-align: center;
+            padding: 1.2vh 1vw;
+            margin-bottom: 1.5vh;
+            background: rgba(255, 215, 100, 0.06);
+            border: 1px solid rgba(255, 215, 100, 0.12);
+            border-radius: 16px;
+            position: relative;
+            z-index: 2;
+            min-height: 7vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #status-text {
+            font-size: clamp(1.1rem, 2.2vh, 1.8rem);
+            color: #f0e6c5;
+            letter-spacing: 0.06em;
+            font-weight: 300;
+            text-shadow: 0 0 20px rgba(255, 215, 100, 0.1);
+            line-height: 1.6;
+        }
+
+        #status-text .highlight {
+            color: #ffd764;
+            font-weight: 500;
+            text-shadow: 0 0 30px rgba(255, 215, 100, 0.3);
+        }
+
         #pinyin-display {
-            font-size: 40px; font-family: Arial, sans-serif;
-            color: #c0392b; font-weight: bold; opacity: 0;
-            transition: opacity 0.5s; letter-spacing: 2px;
+            font-size: clamp(1.6rem, 3.2vh, 2.8rem);
+            color: #ffd764;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 40px rgba(255, 215, 100, 0.25);
+            margin-top: 0.2vh;
+            display: none;
         }
-        #instruction-text {
-            font-size: 22px; color: #5a4634; font-weight: bold;
-            margin-top: 10px; background: rgba(255,255,255,0.6);
-            padding: 5px 15px; border-radius: 8px;
-            text-align: center; max-width: 90%;
+
+        #pinyin-display.show {
+            display: block;
+            animation: pinyinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
-        #canvas-container {
-            width: 350px; height: 350px; position: relative;
-            background-color: #fff; border: 4px dashed #a68b6a;
-            border-radius: 10px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+
+        @keyframes pinyinPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* ===== 畫布區 ===== */
+        #canvas-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 580px;
+            aspect-ratio: 1 / 1;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 60px rgba(255, 215, 100, 0.06), inset 0 0 80px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 215, 100, 0.10);
+            background: #0d0b14;
+            z-index: 2;
             touch-action: none;
         }
-        #trace-guide {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.15; pointer-events: none;
+
+        #canvas-wrapper canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: pointer;
         }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
-        .controls { margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-        button {
-            padding: 12px 20px; font-size: 18px; font-weight: bold;
-            cursor: pointer; background-color: #5a4634; color: white;
-            border: none; border-radius: 8px; transition: all 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+
+        /* 畫布上層裝飾 */
+        #canvas-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+            border-radius: 20px;
+            z-index: 1;
         }
-        button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
-        button:disabled { background-color: #bdc3c7; color: #7f8c8d; cursor: not-allowed; box-shadow: none; }
-        #recordBtn { background-color: #c0392b; transition: all 0.3s ease; }
-        #recordBtn:hover:not(:disabled) { background-color: #922b21; }
-        #nextBtn { background-color: #27ae60; display: none; }
-        .recording-pulse {
-            background-color: #e74c3c !important;
-            animation: pulse-glow 1.5s infinite;
+
+        /* ===== 控制按鈕區 ===== */
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8vh 1vw;
+            width: 100%;
+            max-width: 580px;
+            margin-top: 1.8vh;
+            padding: 0.6vh 0;
+            position: relative;
+            z-index: 2;
         }
-        @keyframes pulse-glow {
-            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+
+        .btn {
+            padding: 0.8vh 1.8vw;
+            min-height: 5vh;
+            min-width: 8vw;
+            font-size: clamp(0.8rem, 1.6vh, 1.2rem);
+            font-weight: 500;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            letter-spacing: 0.04em;
+            touch-action: manipulation;
+            background: rgba(255, 255, 255, 0.05);
+            color: #c8bda0;
+            border: 1px solid rgba(255, 215, 100, 0.15);
+            backdrop-filter: blur(4px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4vw;
+            flex: 0 1 auto;
+            white-space: nowrap;
         }
-        #right-panel {
-            width: 50%; height: 100%; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            background: radial-gradient(circle, #34495e 0%, #1a1a1d 80%);
+
+        .btn:active {
+            transform: scale(0.94);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f5b042, #d48a2a);
+            color: #0a0a0f;
+            border-color: #f5b042;
+            box-shadow: 0 4px 30px rgba(245, 176, 66, 0.2);
+            font-weight: 600;
+        }
+        .btn-primary:active {
+            box-shadow: 0 2px 15px rgba(245, 176, 66, 0.1);
+        }
+        .btn-primary:disabled {
+            opacity: 0.35;
+            filter: grayscale(0.6);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.10);
+            color: #c8bda0;
+        }
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .btn-secondary:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-danger {
+            background: rgba(255, 70, 70, 0.15);
+            border-color: rgba(255, 70, 70, 0.25);
+            color: #ff7a7a;
+        }
+        .btn-danger:active {
+            background: rgba(255, 70, 70, 0.25);
+        }
+
+        .btn-voice {
+            background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), rgba(60, 120, 255, 0.10));
+            border-color: rgba(100, 200, 255, 0.25);
+            color: #8ac4ff;
             position: relative;
         }
-        #monster-container {
-            display: flex; flex-direction: column; align-items: center;
-            opacity: 0; transform: scale(0.5); transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .btn-voice.recording {
+            animation: pulseMic 1.2s ease-in-out infinite;
+            border-color: #ff5a5a;
+            color: #ff5a5a;
+            background: rgba(255, 70, 70, 0.12);
         }
-        #monster-container.revealed { opacity: 1; transform: scale(1); }
+
+        @keyframes pulseMic {
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(255, 70, 70, 0.15);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 70, 70, 0.35), 0 0 80px rgba(255, 70, 70, 0.10);
+            }
+        }
+
+        .btn-glow {
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(255, 215, 100, 0.05);
+            }
+            50% {
+                box-shadow: 0 0 60px rgba(255, 215, 100, 0.15);
+            }
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #5ddb7a, #2eaa4e);
+            color: #0a0a0f;
+            border-color: #5ddb7a;
+            box-shadow: 0 4px 30px rgba(93, 219, 122, 0.2);
+        }
+
+        /* ===== 右側面板 ===== */
+        #right-panel {
+            flex: 0 0 50%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at 60% 40%, #1e1a2a, #0a080f);
+            position: relative;
+            overflow: hidden;
+            padding: 2vh 2vw;
+        }
+
+        /* 法陣背景 */
+        #right-panel::before {
+            content: '✦';
+            position: absolute;
+            font-size: 50vh;
+            color: rgba(255, 215, 100, 0.018);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            animation: spinArray 40s linear infinite;
+            pointer-events: none;
+            font-family: serif;
+        }
+
+        #right-panel::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            border: 1px solid rgba(255, 215, 100, 0.03);
+            border-radius: 50%;
+            animation: spinArray 60s linear infinite reverse;
+            pointer-events: none;
+        }
+
+        @keyframes spinArray {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        /* ===== 妖怪展示區 ===== */
+        #reveal-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5vh;
+            z-index: 5;
+            position: relative;
+            padding: 2vh 2vw;
+            animation: revealAppear 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        #reveal-area.show {
+            display: flex;
+        }
+
+        @keyframes revealAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) rotate(-8deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
         #modern-char {
-            font-family: 'BiauKai', '標楷體', serif; font-size: 160px;
-            color: #f1c40f; text-shadow: 0 0 20px rgba(241, 196, 15, 0.5); margin-bottom: 20px;
+            font-size: clamp(6rem, 16vh, 12rem);
+            font-weight: 700;
+            color: #ffd764;
+            text-shadow: 0 0 60px rgba(255, 215, 100, 0.4), 0 0 120px rgba(255, 215, 100, 0.15), 0 0 200px rgba(255, 200, 50, 0.05);
+            letter-spacing: 0.1em;
+            line-height: 1;
+            animation: charGlow 3s ease-in-out infinite alternate;
         }
-        #monster-pic {
-            font-size: 180px; line-height: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,0.4));
-            animation: float 3s ease-in-out infinite;
+
+        @keyframes charGlow {
+            0% {
+                text-shadow: 0 0 60px rgba(255, 215, 100, 0.3), 0 0 120px rgba(255, 215, 100, 0.10);
+            }
+            100% {
+                text-shadow: 0 0 80px rgba(255, 215, 100, 0.6), 0 0 180px rgba(255, 215, 100, 0.25), 0 0 300px rgba(255, 200, 50, 0.08);
+            }
         }
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
-        #magic-circle {
-            position: absolute; width: 500px; height: 500px;
-            border: 2px dashed rgba(241, 196, 15, 0.2); border-radius: 50%;
-            animation: spin 30s linear infinite; pointer-events: none;
+
+        #animal-emoji {
+            font-size: clamp(8rem, 22vh, 16rem);
+            line-height: 1;
+            animation: floatAnimal 3.5s ease-in-out infinite;
+            filter: drop-shadow(0 0 40px rgba(255, 215, 100, 0.15));
         }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @keyframes floatAnimal {
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* 未解鎖時的佔位 */
+        #placeholder-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            color: rgba(255, 215, 100, 0.10);
+            font-size: clamp(1rem, 2vh, 1.6rem);
+            letter-spacing: 0.2em;
+            text-align: center;
+            padding: 2vh;
+        }
+
+        #placeholder-area .symbol {
+            font-size: clamp(4rem, 10vh, 8rem);
+            opacity: 0.15;
+            margin-bottom: 1vh;
+            animation: spinArray 30s linear infinite;
+        }
+
+        /* ===== 分數顯示（調試/視覺） ===== */
+        #score-badge {
+            position: absolute;
+            bottom: 1.5vh;
+            right: 1.5vw;
+            font-size: clamp(0.7rem, 1.2vh, 1rem);
+            color: rgba(255, 215, 100, 0.20);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.3vh 0.8vw;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 100, 0.05);
+            pointer-events: none;
+            z-index: 10;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+        }
+
+        /* ===== 響應式微調 ===== */
+        @media (max-width: 768px) {
+            #left-panel {
+                padding: 1.5vh 2vw;
+            }
+            #controls {
+                gap: 0.6vh 1.2vw;
+            }
+            .btn {
+                padding: 0.6vh 2.5vw;
+                min-height: 4.5vh;
+                font-size: clamp(0.7rem, 1.4vh, 1rem);
+                min-width: 10vw;
+            }
+        }
+
+        @media (orientation: portrait) {
+            /* 強制橫屏提示 */
+            #app::after {
+                content: '👆 請將裝置旋轉至橫屏使用';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.92);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: clamp(1.2rem, 4vw, 2.4rem);
+                color: #ffd764;
+                z-index: 9999;
+                letter-spacing: 0.08em;
+                backdrop-filter: blur(10px);
+                font-weight: 300;
+                text-align: center;
+                padding: 10vw;
+                line-height: 1.8;
+            }
+        }
+
+        /* ===== 載入動畫 ===== */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.8s ease;
+            color: #ffd764;
+            font-size: clamp(1rem, 2vh, 1.6rem);
+            letter-spacing: 0.1em;
+        }
+        #loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #loading-overlay .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 215, 100, 0.08);
+            border-top: 3px solid #ffd764;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 2vh;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 清除按鈕特殊樣式 */
+        .btn-clear {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.06);
+            color: #887e6a;
+        }
+        .btn-clear:active {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* 小工具：狀態指示燈 */
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .dot.green {
+            background: #5ddb7a;
+            box-shadow: 0 0 20px rgba(93, 219, 122, 0.3);
+        }
+        .dot.yellow {
+            background: #f5b042;
+            box-shadow: 0 0 20px rgba(245, 176, 66, 0.2);
+        }
+        .dot.red {
+            background: #ff5a5a;
+            box-shadow: 0 0 20px rgba(255, 70, 70, 0.2);
+        }
+        .dot.gray {
+            background: #444;
+        }
     </style>
 </head>
 <body>
-    <div id="left-panel">
-        <div id="prompt-area">
-            <div id="pinyin-display"></div>
-            <div id="instruction-text">請描寫下方的甲骨文字形</div>
-        </div>
-        <div id="canvas-container">
-            <img id="trace-guide" src="" alt="甲骨文底圖">
-            <canvas id="writeCanvas" width="350" height="350"></canvas>
-        </div>
-        <div class="controls">
-            <button id="clearBtn" onclick="clearCanvas()">清除重寫</button>
-            <button id="checkBtn" onclick="checkWriting()">驗證符文</button>
-            <button id="recordBtn" onclick="toggleRecording()" disabled>🎙️ 唸咒</button>
-            <button id="nextBtn" onclick="initGame()">尋找下個妖怪</button>
-        </div>
+
+    <!-- ===== 載入遮罩 ===== -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div>🔮 召喚甲骨文靈力 ...</div>
     </div>
-    <div id="right-panel">
-        <div id="magic-circle"></div>
-        <div id="monster-container">
-            <div id="modern-char"></div>
-            <div id="monster-pic"></div>
+
+    <!-- ===== 主應用 ===== -->
+    <div id="app">
+
+        <!-- 左側面板 -->
+        <div id="left-panel">
+            <!-- 狀態提示 -->
+            <div id="status-area">
+                <div id="status-text">✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span></div>
+                <div id="pinyin-display"></div>
+            </div>
+
+            <!-- 畫布 -->
+            <div id="canvas-wrapper">
+                <canvas id="oracleCanvas"></canvas>
+            </div>
+
+            <!-- 控制按鈕 -->
+            <div id="controls">
+                <button class="btn btn-clear" id="btnClear">🗑 清除</button>
+                <button class="btn btn-primary" id="btnVerify">⚡ 驗證符文</button>
+                <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
+                <button class="btn btn-success" id="btnNext" style="display:none;">🔮 尋找下個妖怪</button>
+            </div>
+
+            <div id="score-badge">靈力 · 待啟動</div>
+        </div>
+
+        <!-- 右側面板 -->
+        <div id="right-panel">
+            <!-- 預設佔位 -->
+            <div id="placeholder-area">
+                <div class="symbol">⛩️</div>
+                <div>等待符文之力</div>
+                <div style="font-size:0.7em; opacity:0.5; margin-top:0.5vh;">描繪甲骨文 · 誦唸咒語</div>
+            </div>
+
+            <!-- 妖怪現形區 -->
+            <div id="reveal-area">
+                <div id="modern-char">羊</div>
+                <div id="animal-emoji">🐑</div>
+            </div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // 1. 配置與字庫 (請將密鑰移至服務端)
-        // ==========================================
-        const XF_APPID = '2600b137';
-        const XF_API_KEY = '8b012124ed213c06974cd469f29e134b';
-        const XF_API_SECRET = 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj';
+        // ================================================================
+        //  《甲骨文伏妖錄》 - 完整互動邏輯
+        //  技術棧：Canvas 2D · AudioWorklet · WebSocket · CryptoJS
+        //  版本：1.0.0 (已嵌入真實 API 憑證)
+        // ================================================================
 
-        const dictionary = [
-            { char: '羊', pinyin: 'yáng', emoji: '🐑', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L50,80 M20,30 L80,30 M30,50 L70,50 M30,20 L50,40 L70,20 M30,70 L70,70" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' }
-        ];
+        (function() {
+            'use strict';
 
-        let currentTarget = null;
-        let isTracingPassed = false;
-        const instructionEl = document.getElementById('instruction-text');
-        const pinyinEl = document.getElementById('pinyin-display');
-        const checkBtn = document.getElementById('checkBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const nextBtn = document.getElementById('nextBtn');
+            // ============================================================
+            //  1. 配置與常量 (已套用用戶提供的憑證)
+            // ============================================================
 
-        function initGame() {
-            console.log("[GAME] 初始化遊戲");
-            currentTarget = dictionary[Math.floor(Math.random() * dictionary.length)];
-            isTracingPassed = false;
-            clearCanvas();
-            document.getElementById('trace-guide').src = currentTarget.svg;
-            document.getElementById('monster-container').classList.remove('revealed');
-            pinyinEl.style.opacity = 0;
-            pinyinEl.innerText = currentTarget.pinyin;
-            instructionEl.innerText = "請描寫下方的甲骨文字形";
-            checkBtn.style.display = 'inline-block';
-            recordBtn.disabled = true;
-            recordBtn.innerText = "🎙️ 唸咒";
-            recordBtn.classList.remove('recording-pulse');
-            nextBtn.style.display = 'none';
-            // 重置录音状态
-            if (window.audioContext) {
-                window.audioContext.close().catch(()=>{});
-                window.audioContext = null;
-            }
-            if (window.mediaStream) {
-                window.mediaStream.getTracks().forEach(t=>t.stop());
-                window.mediaStream = null;
-            }
-            if (window.currentWs) {
-                window.currentWs.close();
-                window.currentWs = null;
-            }
-            window.isRecording = false;
-        }
+            const XF_CONFIG = {
+                APPID: '2600b137',
+                API_KEY: '8b012124ed213c06974cd469f29e134b',
+                API_SECRET: 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj',
+                WSS_URL: 'wss://ise-api.xfyun.cn/v2/ise',
+            };
 
-        // ==========================================
-        // 2. 畫布邏輯
-        // ==========================================
-        const canvas = document.getElementById('writeCanvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        let isDrawing = false;
-        const BRUSH_SIZE = 12;
-        ctx.lineWidth = BRUSH_SIZE;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#2c3e50';
+            // ---- 錄音參數 ----
+            const AUDIO_CONFIG = {
+                sampleRate: 16000,
+                bitDepth: 16,
+                channels: 1,
+                frameDuration: 40,
+                maxRecordSeconds: 8,
+            };
 
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-        function startDrawing(e) { if(isTracingPassed) return; e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x + 0.1, pos.y + 0.1); ctx.stroke(); }
-        function draw(e) { if (!isDrawing || isTracingPassed) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        function stopDrawing() { isDrawing = false; }
-        canvas.addEventListener('pointerdown', startDrawing);
-        canvas.addEventListener('pointermove', draw);
-        canvas.addEventListener('pointerup', stopDrawing);
-        canvas.addEventListener('pointerout', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing);
+            // ---- 比對閾值 ----
+            const THRESHOLDS = {
+                drawPass: 60,
+                voicePass: 60,
+            };
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.beginPath();
-            isTracingPassed = false;
-            pinyinEl.style.opacity = 0;
-            instructionEl.innerText = "請描寫下方的甲骨文字形";
-            checkBtn.style.display = 'inline-block';
-            recordBtn.disabled = true;
-            recordBtn.innerText = "🎙️ 唸咒";
-            recordBtn.classList.remove('recording-pulse');
-            document.getElementById('monster-container').classList.remove('revealed');
-            nextBtn.style.display = 'none';
-        }
+            // ============================================================
+            //  2. 字庫數據 (同前)
+            // ============================================================
 
-        // ==========================================
-        // 3. 書寫驗證 (Jaccard 相似度 ≥ 30%，检测alpha)
-        // ==========================================
-        async function checkWriting() {
-            instructionEl.innerText = "⏳ 比對中...";
-            checkBtn.disabled = true;
-
-            try {
-                // 1) 获取用户画布数据，只统计不透明且非白的笔画
-                const userData = ctx.getImageData(0, 0, 350, 350);
-                const userPixels = new Uint8Array(userData.data);
-                const userMask = new Uint8Array(350 * 350);
-                for (let i = 0; i < userPixels.length; i += 4) {
-                    const r = userPixels[i], g = userPixels[i+1], b = userPixels[i+2], a = userPixels[i+3];
-                    if (a > 128 && (0.299 * r + 0.587 * g + 0.114 * b) < 128) {
-                        userMask[i/4] = 1;
-                    }
-                }
-                const userTotal = userMask.reduce((a,b) => a+b, 0);
-                if (userTotal < 200) {
-                    instructionEl.innerText = "❌ 幾乎未書寫，請描寫線條";
-                    checkBtn.disabled = false;
-                    return;
-                }
-
-                // 2) 加载底图并二值化（同样检测alpha）
-                const hiddenCanvas = document.createElement('canvas');
-                hiddenCanvas.width = 350;
-                hiddenCanvas.height = 350;
-                const hiddenCtx = hiddenCanvas.getContext('2d');
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = currentTarget.svg;
-                });
-                hiddenCtx.drawImage(img, 0, 0, 350, 350);
-                const guideData = hiddenCtx.getImageData(0, 0, 350, 350);
-                const guidePixels = new Uint8Array(guideData.data);
-                const guideMask = new Uint8Array(350 * 350);
-                for (let i = 0; i < guidePixels.length; i += 4) {
-                    const r = guidePixels[i], g = guidePixels[i+1], b = guidePixels[i+2], a = guidePixels[i+3];
-                    if (a > 128 && (0.299 * r + 0.587 * g + 0.114 * b) < 128) {
-                        guideMask[i/4] = 1;
-                    }
-                }
-
-                // 3) 膨胀底图 (半径8)
-                const radius = 8;
-                const expanded = new Uint8Array(350 * 350);
-                for (let y = 0; y < 350; y++) {
-                    for (let x = 0; x < 350; x++) {
-                        const idx = y * 350 + x;
-                        if (guideMask[idx] === 1) {
-                            for (let dy = -radius; dy <= radius; dy++) {
-                                for (let dx = -radius; dx <= radius; dx++) {
-                                    const nx = x + dx, ny = y + dy;
-                                    if (nx >= 0 && nx < 350 && ny >= 0 && ny < 350) {
-                                        expanded[ny * 350 + nx] = 1;
-                                    }
-                                }
-                            }
+            const CHARACTERS = [{
+                id: 'yang',
+                char: '羊',
+                pinyin: 'yang2',
+                emoji: '🐑',
+                drawOracle: function(ctx, w, h) {
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.lineWidth = Math.max(3, w * 0.025);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    const cx = w / 2,
+                        cy = h / 2,
+                        s = Math.min(w, h) * 0.32;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.5, cy - s * 0.2);
+                    ctx.quadraticCurveTo(cx - s * 0.9, cy - s * 0.9, cx - s * 0.3, cy - s * 0.7);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.5, cy - s * 0.2);
+                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.9, cx + s * 0.3, cy - s * 0.7);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - s * 0.5);
+                    ctx.lineTo(cx - s * 0.5, cy + s * 0.1);
+                    ctx.lineTo(cx + s * 0.5, cy + s * 0.1);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy + s * 0.4, s * 0.5, s * 0.45, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    for (let side = -1; side <= 1; side += 2) {
+                        for (let leg = -1; leg <= 1; leg += 2) {
+                            ctx.beginPath();
+                            ctx.moveTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 0.7);
+                            ctx.lineTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 1.1);
+                            ctx.stroke();
                         }
                     }
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.5, cy + s * 0.4);
+                    ctx.quadraticCurveTo(cx + s * 0.9, cy + s * 0.2, cx + s * 0.8, cy + s * 0.6);
+                    ctx.stroke();
                 }
-                const guideTotal = expanded.reduce((a,b) => a+b, 0);
-
-                // 4) 计算交集
-                let intersection = 0;
-                for (let i = 0; i < userMask.length; i++) {
-                    if (userMask[i] === 1 && expanded[i] === 1) intersection++;
+            }, {
+                id: 'ma',
+                char: '馬',
+                pinyin: 'ma3',
+                emoji: '🐴',
+                drawOracle: function(ctx, w, h) {
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.lineWidth = Math.max(3, w * 0.025);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    const cx = w / 2,
+                        cy = h / 2,
+                        s = Math.min(w, h) * 0.32;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.1, cy - s * 0.6);
+                    ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.5, cx - s * 0.3, cy - s * 0.1);
+                    ctx.quadraticCurveTo(cx - s * 0.2, cy + s * 0.1, cx, cy + s * 0.05);
+                    ctx.stroke();
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        const x = cx - s * 0.1 + i * s * 0.08;
+                        ctx.moveTo(x, cy - s * 0.55 + i * s * 0.04);
+                        ctx.quadraticCurveTo(x - s * 0.3, cy - s * 0.5 + i * s * 0.1, x - s * 0.4, cy - s * 0.3 + i * s *
+                            0.08);
+                        ctx.stroke();
+                    }
+                    ctx.beginPath();
+                    ctx.ellipse(cx + s * 0.1, cy + s * 0.2, s * 0.5, s * 0.4, 0.1, 0, Math.PI * 2);
+                    ctx.stroke();
+                    for (let side = -1; side <= 1; side += 2) {
+                        for (let leg = -1; leg <= 1; leg += 2) {
+                            ctx.beginPath();
+                            ctx.moveTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.5);
+                            ctx.lineTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.95);
+                            ctx.stroke();
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.6, cy + s * 0.15);
+                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.1, cx + s * 0.8, cy + s * 0.4);
+                    ctx.stroke();
                 }
-
-                // 5) Jaccard 相似度
-                const jaccard = intersection / (userTotal + guideTotal - intersection);
-                console.log(`[驗證] 用戶筆跡: ${userTotal}, 底圖膨脹: ${guideTotal}, 交集: ${intersection}, Jaccard: ${(jaccard*100).toFixed(1)}%`);
-
-                // 【修改点】阈值从 0.8 改为 0.3
-                if (jaccard >= 0.3) {
-                    isTracingPassed = true;
-                    instructionEl.innerText = "✅ 符文生效！準備好後點擊唸咒按鈕";
-                    pinyinEl.style.opacity = 1;
-                    checkBtn.style.display = 'none';
-                    recordBtn.disabled = false;
-                    recordBtn.classList.remove('recording-pulse');
-                    recordBtn.innerText = "🎙️ 唸咒";
-                } else {
-                    instructionEl.innerText = `❌ 相符度 ${(jaccard*100).toFixed(0)}%，需達30%，請重新描寫`;
+            }, {
+                id: 'niu',
+                char: '牛',
+                pinyin: 'niu2',
+                emoji: '🐮',
+                drawOracle: function(ctx, w, h) {
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.lineWidth = Math.max(3, w * 0.025);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    const cx = w / 2,
+                        cy = h / 2,
+                        s = Math.min(w, h) * 0.32;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.4, cy - s * 0.5);
+                    ctx.quadraticCurveTo(cx - s * 0.9, cy - s * 0.9, cx - s * 0.5, cy - s * 0.7);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.4, cy - s * 0.5);
+                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.9, cx + s * 0.5, cy - s * 0.7);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.5, cy - s * 0.35);
+                    ctx.lineTo(cx + s * 0.5, cy - s * 0.35);
+                    ctx.lineTo(cx + s * 0.35, cy + s * 0.05);
+                    ctx.lineTo(cx - s * 0.35, cy + s * 0.05);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy + s * 0.35, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    for (let side = -1; side <= 1; side += 2) {
+                        for (let leg = -1; leg <= 1; leg += 2) {
+                            ctx.beginPath();
+                            ctx.moveTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 0.65);
+                            ctx.lineTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 1.05);
+                            ctx.stroke();
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.55, cy + s * 0.3);
+                    ctx.quadraticCurveTo(cx + s * 0.85, cy + s * 0.1, cx + s * 0.75, cy + s * 0.5);
+                    ctx.stroke();
                 }
-            } catch (err) {
-                console.error("[驗證] 錯誤:", err);
-                instructionEl.innerText = "比對失敗，請重試";
-            } finally {
-                checkBtn.disabled = false;
+            }, {
+                id: 'niao',
+                char: '鳥',
+                pinyin: 'niao3',
+                emoji: '🐦',
+                drawOracle: function(ctx, w, h) {
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.lineWidth = Math.max(3, w * 0.025);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    const cx = w / 2,
+                        cy = h / 2,
+                        s = Math.min(w, h) * 0.30;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy + s * 0.1, s * 0.45, s * 0.5, -0.1, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(cx + s * 0.35, cy - s * 0.25, s * 0.25, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.55, cy - s * 0.25);
+                    ctx.lineTo(cx + s * 0.8, cy - s * 0.15);
+                    ctx.lineTo(cx + s * 0.55, cy - s * 0.05);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.3, cy - s * 0.1);
+                    ctx.quadraticCurveTo(cx - s * 0.6, cy - s * 0.5, cx - s * 0.1, cy - s * 0.4);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.2, cy);
+                    ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.3, cx - s * 0.05, cy - s * 0.2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.45, cy + s * 0.25);
+                    ctx.lineTo(cx - s * 0.7, cy + s * 0.4);
+                    ctx.lineTo(cx - s * 0.5, cy + s * 0.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.05, cy + s * 0.5);
+                    ctx.lineTo(cx + s * 0.05, cy + s * 0.85);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.05, cy + s * 0.5);
+                    ctx.lineTo(cx - s * 0.05, cy + s * 0.85);
+                    ctx.stroke();
+                }
+            }, {
+                id: 'yu',
+                char: '魚',
+                pinyin: 'yu2',
+                emoji: '🐟',
+                drawOracle: function(ctx, w, h) {
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.strokeStyle = 'rgba(255,215,100,0.25)';
+                    ctx.lineWidth = Math.max(3, w * 0.025);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    const cx = w / 2,
+                        cy = h / 2,
+                        s = Math.min(w, h) * 0.30;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, s * 0.6, s * 0.35, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(cx + s * 0.5, cy, s * 0.2, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(cx + s * 0.55, cy - s * 0.05, s * 0.06, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,215,100,0.15)';
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.2, cy - s * 0.35);
+                    ctx.quadraticCurveTo(cx, cy - s * 0.55, cx + s * 0.2, cy - s * 0.35);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s * 0.3, cy + s * 0.15);
+                    ctx.quadraticCurveTo(cx + s * 0.5, cy + s * 0.35, cx + s * 0.2, cy + s * 0.3);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx - s * 0.6, cy);
+                    ctx.lineTo(cx - s * 0.85, cy - s * 0.3);
+                    ctx.lineTo(cx - s * 0.85, cy + s * 0.3);
+                    ctx.closePath();
+                    ctx.stroke();
+                    for (let i = 0; i < 3; i++) {
+                        const yy = cy - s * 0.15 + i * s * 0.15;
+                        ctx.beginPath();
+                        ctx.arc(cx + s * 0.1, yy, s * 0.18, 0, Math.PI);
+                        ctx.stroke();
+                    }
+                }
+            }];
+
+            // ============================================================
+            //  3. 狀態管理
+            // ============================================================
+
+            const state = {
+                currentChar: null,
+                phase: 'draw',
+                canvasLocked: false,
+                isRecording: false,
+                isVerifying: false,
+                isVoiceProcessing: false,
+                drawScore: 0,
+                voiceScore: 0,
+                audioContext: null,
+                audioWorkletNode: null,
+                mediaStream: null,
+                audioBuffer: [],
+                recordStartTime: 0,
+                recordTimer: null,
+                wsConnection: null,
+                wsReady: false,
+                isSimulateMode: false, // 因已嵌入憑證，保持 false
+            };
+
+            // ============================================================
+            //  4. DOM 引用
+            // ============================================================
+
+            const $ = (id) => document.getElementById(id);
+            const canvas = $('oracleCanvas');
+            const ctx = canvas.getContext('2d');
+            const statusText = $('status-text');
+            const pinyinDisplay = $('pinyin-display');
+            const btnClear = $('btnClear');
+            const btnVerify = $('btnVerify');
+            const btnVoice = $('btnVoice');
+            const btnNext = $('btnNext');
+            const revealArea = $('reveal-area');
+            const placeholderArea = $('placeholder-area');
+            const modernChar = $('modern-char');
+            const animalEmoji = $('animal-emoji');
+            const scoreBadge = $('score-badge');
+            const loadingOverlay = $('loading-overlay');
+
+            // ============================================================
+            //  5. Canvas 尺寸與繪圖 (同前)
+            // ============================================================
+
+            let canvasW, canvasH;
+            let isDrawing = false;
+            let lastX, lastY;
+            let drawHistory = [];
+
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                canvasW = rect.width;
+                canvasH = rect.height;
+                canvas.width = canvasW * dpr;
+                canvas.height = canvasH * dpr;
+                canvas.style.width = canvasW + 'px';
+                canvas.style.height = canvasH + 'px';
+                ctx.scale(dpr, dpr);
+                ctx.lineWidth = Math.max(3, canvasW * 0.02);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = '#ffd764';
+                ctx.shadowColor = 'rgba(255,215,100,0.15)';
+                ctx.shadowBlur = 12;
+                renderOracle();
             }
-        }
 
-        // ==========================================
-        // 4. 語音評測 (移除音量检测)
-        // ==========================================
-        let audioContext, mediaStream, audioWorkletNode;
-        let currentWs = null;
-        let isRecording = false;
-        let stopTimeout = null;
-
-        function getIseAuthUrl() {
-            const host = "ise-api.xfyun.cn";
-            const path = "/v2/open-ise";
-            const date = new Date().toUTCString();
-            const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
-            const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, XF_API_SECRET);
-            const signature = CryptoJS.enc.Base64.stringify(signatureSha);
-            const authorizationOrigin = `api_key="${XF_API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
-            return `wss://${host}${path}?authorization=${encodeURIComponent(btoa(authorizationOrigin))}&date=${encodeURIComponent(date)}&host=${host}`;
-        }
-
-        // 直接发送纯汉字
-        function getValidXunfeiText(char) {
-            return char;
-        }
-
-        function downsampleBuffer(buffer, sampleRate, outSampleRate) {
-            if (outSampleRate === sampleRate) return buffer;
-            const ratio = sampleRate / outSampleRate;
-            const res = new Float32Array(Math.round(buffer.length / ratio));
-            let offset = 0, bufOffset = 0;
-            while (offset < res.length) {
-                let nextOffset = Math.round((offset + 1) * ratio);
-                let accum = 0, count = 0;
-                for (let i = bufOffset; i < nextOffset && i < buffer.length; i++) { accum += buffer[i]; count++; }
-                res[offset] = accum / count;
-                offset++; bufOffset = nextOffset;
+            function renderOracle() {
+                ctx.clearRect(0, 0, canvasW, canvasH);
+                if (state.currentChar) {
+                    state.currentChar.drawOracle(ctx, canvasW, canvasH);
+                }
+                if (drawHistory.length > 0) {
+                    ctx.save();
+                    ctx.strokeStyle = '#ffd764';
+                    ctx.lineWidth = Math.max(3, canvasW * 0.02);
+                    ctx.shadowColor = 'rgba(255,215,100,0.2)';
+                    ctx.shadowBlur = 15;
+                    ctx.globalAlpha = 0.85;
+                    for (const path of drawHistory) {
+                        if (path.length < 2) continue;
+                        ctx.beginPath();
+                        ctx.moveTo(path[0].x, path[0].y);
+                        for (let i = 1; i < path.length; i++) {
+                            ctx.lineTo(path[i].x, path[i].y);
+                        }
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
             }
-            return res;
-        }
 
-        async function initAudioWorklet() {
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                return {
+                    x: (touch.clientX - rect.left),
+                    y: (touch.clientY - rect.top),
+                };
+            }
+
+            function startDraw(e) {
+                if (state.canvasLocked || state.phase === 'reveal') return;
+                e.preventDefault();
+                isDrawing = true;
+                const pos = getPos(e);
+                lastX = pos.x;
+                lastY = pos.y;
+                drawHistory.push([{ x: pos.x, y: pos.y }]);
+            }
+
+            function moveDraw(e) {
+                if (!isDrawing || state.canvasLocked) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                const currentPath = drawHistory[drawHistory.length - 1];
+                if (currentPath) {
+                    const last = currentPath[currentPath.length - 1];
+                    if (last && Math.hypot(pos.x - last.x, pos.y - last.y) < 2) return;
+                    currentPath.push({ x: pos.x, y: pos.y });
+                }
+                renderOracle();
+            }
+
+            function endDraw(e) {
+                if (isDrawing) {
+                    isDrawing = false;
+                    const lastPath = drawHistory[drawHistory.length - 1];
+                    if (lastPath && lastPath.length < 3) {
+                        drawHistory.pop();
+                        renderOracle();
+                    }
+                }
+            }
+
+            function bindCanvasEvents() {
+                canvas.addEventListener('touchstart', startDraw, { passive: false });
+                canvas.addEventListener('touchmove', moveDraw, { passive: false });
+                canvas.addEventListener('touchend', endDraw, { passive: false });
+                canvas.addEventListener('touchcancel', endDraw, { passive: false });
+                canvas.addEventListener('mousedown', startDraw);
+                canvas.addEventListener('mousemove', moveDraw);
+                canvas.addEventListener('mouseup', endDraw);
+                canvas.addEventListener('mouseleave', endDraw);
+            }
+
+            // ============================================================
+            //  6. 像素比對 (F1-Score) 同前
+            // ============================================================
+
+            function computeF1Score() {
+                const dpr = window.devicePixelRatio || 1;
+                const w = Math.floor(canvasW * dpr);
+                const h = Math.floor(canvasH * dpr);
+                const off1 = document.createElement('canvas');
+                off1.width = w;
+                off1.height = h;
+                const ctx1 = off1.getContext('2d');
+                ctx1.scale(dpr, dpr);
+                if (state.currentChar) {
+                    state.currentChar.drawOracle(ctx1, canvasW, canvasH);
+                }
+                const off2 = document.createElement('canvas');
+                off2.width = w;
+                off2.height = h;
+                const ctx2 = off2.getContext('2d');
+                ctx2.scale(dpr, dpr);
+                ctx2.strokeStyle = '#fff';
+                ctx2.lineWidth = Math.max(3, canvasW * 0.02);
+                ctx2.lineCap = 'round';
+                ctx2.lineJoin = 'round';
+                for (const path of drawHistory) {
+                    if (path.length < 2) continue;
+                    ctx2.beginPath();
+                    ctx2.moveTo(path[0].x, path[0].y);
+                    for (let i = 1; i < path.length; i++) {
+                        ctx2.lineTo(path[i].x, path[i].y);
+                    }
+                    ctx2.stroke();
+                }
+                const data1 = ctx1.getImageData(0, 0, w, h).data;
+                const data2 = ctx2.getImageData(0, 0, w, h).data;
+                const step = 2;
+                let tp = 0,
+                    fp = 0,
+                    fn = 0;
+                const threshold = 30;
+                for (let i = 0; i < data1.length; i += 4 * step) {
+                    const idx = i / 4;
+                    const x = (idx % w);
+                    const y = Math.floor(idx / w);
+                    if (x % step !== 0 || y % step !== 0) continue;
+                    const r1 = data1[i],
+                        g1 = data1[i + 1],
+                        b1 = data1[i + 2];
+                    const r2 = data2[i],
+                        g2 = data2[i + 1],
+                        b2 = data2[i + 2];
+                    const lum1 = 0.299 * r1 + 0.587 * g1 + 0.114 * b1;
+                    const lum2 = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+                    const isFore1 = lum1 > threshold;
+                    const isFore2 = lum2 > threshold;
+                    if (isFore1 && isFore2) tp++;
+                    else if (!isFore1 && isFore2) fp++;
+                    else if (isFore1 && !isFore2) fn++;
+                }
+                if (tp + fp === 0 || tp + fn === 0) return 0;
+                const precision = tp / (tp + fp);
+                const recall = tp / (tp + fn);
+                if (precision + recall === 0) return 0;
+                const f1 = 2 * precision * recall / (precision + recall);
+                return Math.round(f1 * 100);
+            }
+
+            // ============================================================
+            //  7. 語音錄製 (AudioWorkletNode) 同前
+            // ============================================================
+
             const workletCode = `
-                class IseRecorderProcessor extends AudioWorkletProcessor {
-                    process(inputs, outputs, parameters) {
-                        const input = inputs[0];
-                        if (input.length > 0 && input[0].length > 0) {
-                            this.port.postMessage(input[0]); 
-                        }
+          class PCMProcessor extends AudioWorkletProcessor {
+            constructor() {
+              super();
+              this.buffer = [];
+              this.sampleRate = 16000;
+              this.chunkSize = 640;
+            }
+            process(inputs, outputs, parameters) {
+              const input = inputs[0];
+              if (!input || input.length === 0) return true;
+              const channelData = input[0];
+              if (!channelData) return true;
+              this.buffer.push(new Float32Array(channelData));
+              let totalLen = 0;
+              for (const chunk of this.buffer) totalLen += chunk.length;
+              if (totalLen >= this.chunkSize) {
+                const merged = new Float32Array(totalLen);
+                let offset = 0;
+                for (const chunk of this.buffer) {
+                  merged.set(chunk, offset);
+                  offset += chunk.length;
+                }
+                this.buffer = [];
+                const sendData = merged.slice(0, this.chunkSize);
+                const pcm = new Int16Array(sendData.length);
+                for (let i = 0; i < sendData.length; i++) {
+                  let s = sendData[i];
+                  s = Math.max(-1, Math.min(1, s));
+                  pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                const bytes = new Uint8Array(pcm.buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                const b64 = btoa(binary);
+                this.port.postMessage({ type: 'audio', data: b64, len: pcm.length });
+              }
+              return true;
+            }
+          }
+          registerProcessor('pcm-processor', PCMProcessor);
+        `;
+            let workletBlobURL = null;
+
+            function initWorklet() {
+                if (!workletBlobURL) {
+                    const blob = new Blob([workletCode], { type: 'application/javascript' });
+                    workletBlobURL = URL.createObjectURL(blob);
+                }
+                return workletBlobURL;
+            }
+
+            async function initAudio() {
+                try {
+                    if (state.audioContext && state.audioContext.state === 'running') {
                         return true;
                     }
+                    if (!state.audioContext) {
+                        state.audioContext = new(window.AudioContext || window.webkitAudioContext)({
+                            sampleRate: AUDIO_CONFIG.sampleRate,
+                        });
+                    }
+                    if (state.audioContext.state === 'suspended') {
+                        await state.audioContext.resume();
+                    }
+                    if (state.audioContext.state !== 'running') {
+                        throw new Error('音頻上下文未就緒');
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('音頻初始化失敗:', e);
+                    setStatus('⚠️ 麥克風權限被拒絕，請允許後重試', true);
+                    return false;
                 }
-                registerProcessor('ise-recorder', IseRecorderProcessor);
-            `;
-            const blob = new Blob([workletCode], { type: 'application/javascript' });
-            const workletUrl = URL.createObjectURL(blob);
-            try {
-                await audioContext.audioWorklet.addModule(workletUrl);
-                return true;
-            } catch (err) {
-                console.error("[AUDIO] AudioWorklet 載入失敗", err);
-                return false;
-            }
-        }
-
-        async function toggleRecording() {
-            if (isRecording) {
-                stopRecordingAndAssess();
-            } else {
-                await startVoiceEvaluation();
-            }
-        }
-
-        async function startVoiceEvaluation() {
-            recordBtn.disabled = true;
-            instructionEl.innerText = "🔴 請允許麥克風...";
-
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-                console.log("[AUDIO] 麥克風取得成功");
-            } catch (e) {
-                console.error("[AUDIO] 麥克風取得失敗", e);
-                instructionEl.innerText = "❌ 麥克風授權失敗！請檢查權限";
-                recordBtn.disabled = false;
-                return;
             }
 
-            isRecording = true;
-            recordBtn.innerText = "⏹️ 停止錄音";
-            recordBtn.classList.add('recording-pulse');
-            recordBtn.disabled = false;
-            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」 (20秒後自動停止)`;
-
-            const wsUrl = getIseAuthUrl();
-            console.log("[WS] 開始連線...");
-            currentWs = new WebSocket(wsUrl);
-            let isFirstAudioFrame = true;
-            let audioChunkCount = 0;
-
-            currentWs.onopen = async () => {
-                console.log("[WS] 連線成功！");
-                if (!isRecording) {
-                    if (currentWs) currentWs.close();
+            async function startRecording() {
+                if (state.isRecording) return;
+                if (state.phase !== 'voice') {
+                    setStatus('⚠️ 請先通過符文驗證再唸咒', true);
                     return;
                 }
-
-                const payload = {
-                    common: { app_id: XF_APPID },
-                    business: {
-                        sub: "ise", cmd: "ssb", category: "read_syllable",
-                        ent: "cn_vip", aue: "raw", tte: "utf-8", ttp_skip: true,
-                        text: getValidXunfeiText(currentTarget.char)
-                    },
-                    data: { status: 0, data: "" }
-                };
-                console.log("[WS] 發送首幀，文本:", payload.business.text);
-                currentWs.send(JSON.stringify(payload));
-
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') await audioContext.resume();
-
-                const workletSuccess = await initAudioWorklet();
-                if (!workletSuccess) {
-                    instructionEl.innerText = "瀏覽器不支援語音模組";
-                    forceResetRecording();
-                    return;
-                }
-
-                if (!mediaStream || !mediaStream.active) {
-                    forceResetRecording();
-                    return;
-                }
-
                 try {
-                    const source = audioContext.createMediaStreamSource(mediaStream);
-                    audioWorkletNode = new AudioWorkletNode(audioContext, 'ise-recorder');
-                    audioWorkletNode.port.onmessage = (e) => {
-                        if (!currentWs || currentWs.readyState !== WebSocket.OPEN || !isRecording) return;
-                        const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
-                        audioChunkCount++;
-                        // 仅输出日志，不进行音量检测
-                        if (audioChunkCount % 50 === 0) {
-                            let sum = 0;
-                            for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
-                            console.log(`[AUDIO] Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}`);
+                    const ok = await initAudio();
+                    if (!ok) return;
+                    if (!state.mediaStream) {
+                        state.mediaStream = await navigator.mediaDevices.getUserMedia({
+                            audio: {
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                autoGainControl: false,
+                                sampleRate: AUDIO_CONFIG.sampleRate,
+                            },
+                            video: false,
+                        });
+                    }
+                    if (!state.audioWorkletNode) {
+                        await state.audioContext.audioWorklet.addModule(initWorklet());
+                        const source = state.audioContext.createMediaStreamSource(state.mediaStream);
+                        state.audioWorkletNode = new AudioWorkletNode(state.audioContext, 'pcm-processor');
+                        state.audioWorkletNode.port.onmessage = (e) => {
+                            if (e.data.type === 'audio') {
+                                if (state.isRecording && state.wsReady) {
+                                    sendAudioChunk(e.data.data, e.data.len);
+                                }
+                            }
+                        };
+                        source.connect(state.audioWorkletNode);
+                        state.audioWorkletNode.connect(state.audioContext.destination);
+                    }
+                    state.audioBuffer = [];
+                    state.isRecording = true;
+                    state.recordStartTime = Date.now();
+                    btnVoice.textContent = '⏹️ 停止錄音';
+                    btnVoice.classList.add('recording');
+                    btnVoice.disabled = false;
+                    setStatus('🎤 請大聲朗讀咒語 ... (最長 8 秒)', false);
+                    if (state.recordTimer) clearTimeout(state.recordTimer);
+                    state.recordTimer = setTimeout(() => {
+                        if (state.isRecording) {
+                            stopRecording(true);
                         }
-
-                        const pcm = new Int16Array(downsampled.length);
-                        for (let i = 0; i < downsampled.length; i++) {
-                            let s = Math.max(-1, Math.min(1, downsampled[i]));
-                            pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                        }
-                        let binary = '';
-                        const bytes = new Uint8Array(pcm.buffer);
-                        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-                        const base64Audio = window.btoa(binary);
-
-                        currentWs.send(JSON.stringify({
-                            business: { cmd: "auw", aus: isFirstAudioFrame ? 1 : 2 },
-                            data: { status: 1, data: base64Audio }
-                        }));
-                        isFirstAudioFrame = false;
-                    };
-
-                    source.connect(audioWorkletNode);
-                    audioWorkletNode.connect(audioContext.destination);
-                    console.log("[AUDIO] 錄音管道串接完成");
-
-                    stopTimeout = setTimeout(() => {
-                        console.log("[USER] 20秒超時，自動停止");
-                        if (isRecording) stopRecordingAndAssess();
-                    }, 20000);
-
-                } catch (err) {
-                    console.error("[AUDIO] 建立音訊來源錯誤:", err);
-                    forceResetRecording();
+                    }, AUDIO_CONFIG.maxRecordSeconds * 1000);
+                    if (!state.wsReady) {
+                        await connectWebSocket();
+                    }
+                } catch (e) {
+                    console.error('錄音啟動失敗:', e);
+                    setStatus('⚠️ 無法存取麥克風: ' + e.message, true);
+                    resetVoiceUI();
                 }
-            };
+            }
 
-            currentWs.onmessage = (e) => {
-                const res = JSON.parse(e.data);
-                if (res.code !== 0) {
-                    console.error("[WS] 伺服器錯誤:", res);
-                    if (res.code === 60114) {
-                        instructionEl.innerText = "⏱️ 錄音超時，請再試一次";
+            function stopRecording(auto = false) {
+                if (!state.isRecording) return;
+                state.isRecording = false;
+                if (state.recordTimer) {
+                    clearTimeout(state.recordTimer);
+                    state.recordTimer = null;
+                }
+                if (state.wsReady) {
+                    sendAudioEnd();
+                }
+                resetVoiceUI();
+                if (!auto) {
+                    setStatus('⏳ 等待咒語評測 ...', false);
+                } else {
+                    setStatus('⏳ 咒語已送出，請等候 ...', false);
+                }
+            }
+
+            function resetVoiceUI() {
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+                btnVoice.disabled = (state.phase !== 'voice');
+            }
+
+            function sendAudioChunk(b64Data, len) {
+                if (!state.wsReady || !state.wsConnection) return;
+                const payload = {
+                    cmd: 'auw',
+                    aus: state.audioBuffer.length === 0 ? 1 : 2,
+                    data: b64Data,
+                };
+                try {
+                    state.wsConnection.send(JSON.stringify(payload));
+                } catch (e) {
+                    console.warn('發送音訊失敗:', e);
+                }
+            }
+
+            function sendAudioEnd() {
+                if (!state.wsReady || !state.wsConnection) return;
+                const payload = {
+                    cmd: 'auw',
+                    aus: 4,
+                    data: '',
+                };
+                try {
+                    state.wsConnection.send(JSON.stringify(payload));
+                } catch (e) {
+                    console.warn('發送尾幀失敗:', e);
+                }
+            }
+
+            // ============================================================
+            //  8. 科大訊飛 WebSocket 連線 (使用真實憑證)
+            // ============================================================
+
+            function buildWSSUrl() {
+                const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
+                const host = new URL(WSS_URL).host;
+                const date = new Date().toUTCString();
+                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/ise HTTP/1.1`;
+                const sha = CryptoJS.HmacSHA256(signatureOrigin, API_SECRET);
+                const signature = CryptoJS.enc.Base64.stringify(sha);
+                const authOrigin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
+                const auth = btoa(authOrigin);
+                return `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
+            }
+
+            async function connectWebSocket() {
+                if (state.wsReady) return;
+                try {
+                    const url = buildWSSUrl();
+                    state.wsConnection = new WebSocket(url);
+                    state.wsConnection.binaryType = 'blob';
+                    return new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('WSS 連線超時'));
+                        }, 10000);
+                        state.wsConnection.onopen = () => {
+                            clearTimeout(timeout);
+                            state.wsReady = true;
+                            sendInitFrame();
+                            resolve();
+                        };
+                        state.wsConnection.onerror = (err) => {
+                            clearTimeout(timeout);
+                            console.error('WSS 錯誤:', err);
+                            reject(err);
+                        };
+                        state.wsConnection.onmessage = (e) => {
+                            handleWSMessage(e.data);
+                        };
+                        state.wsConnection.onclose = () => {
+                            state.wsReady = false;
+                            console.log('WSS 連線關閉');
+                        };
+                    });
+                } catch (e) {
+                    console.error('WSS 連線失敗:', e);
+                    setStatus('⚠️ 語音服務連線失敗，請檢查網路', true);
+                    throw e;
+                }
+            }
+
+            function sendInitFrame() {
+                if (!state.wsReady || !state.wsConnection) return;
+                const char = state.currentChar;
+                if (!char) return;
+                const text = char.char + '\n' + char.pinyin;
+                const payload = {
+                    cmd: 'ssb',
+                    sub: 'ise',
+                    data: JSON.stringify({
+                        common: { app_id: XF_CONFIG.APPID },
+                        business: {
+                            category: 'read_syllable',
+                            sub: 'ise',
+                            ent: 'cn_vip',
+                            cmd: 'ssb',
+                            auf: 'audio/L16;rate=16000',
+                            aue: 'raw',
+                            rst: 'plain',
+                            text: text,
+                        },
+                        data: {
+                            status: 0,
+                            data: '',
+                        },
+                    }),
+                };
+                state.wsConnection.send(JSON.stringify(payload));
+            }
+
+            function handleWSMessage(data) {
+                try {
+                    let text;
+                    if (data instanceof Blob) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            parseWSResult(reader.result);
+                        };
+                        reader.readAsText(data);
                     } else {
-                        instructionEl.innerText = `系統錯誤：${res.code}`;
+                        text = data;
+                        parseWSResult(text);
                     }
-                    forceResetRecording();
-                    return;
+                } catch (e) {
+                    console.warn('解析 WSS 訊息失敗:', e);
                 }
-                if (res.data && res.data.status === 2) {
-                    console.log("[WS] 收到最終評測結果 (status=2)");
-                    try {
-                        const binaryStr = window.atob(res.data.data);
-                        const bytes = new Uint8Array(binaryStr.length);
-                        for (let i = 0; i < binaryStr.length; i++) { bytes[i] = binaryStr.charCodeAt(i); }
-                        const xmlStr = new TextDecoder("utf-8").decode(bytes);
-                        console.log("========== 📋 訊飛回傳 XML ==========\n" + xmlStr + "\n========================================");
-                        parseIseResult(xmlStr);
-                    } catch (error) {
-                        console.error("[XML] 解碼失敗:", error);
-                        instructionEl.innerText = "資料解析錯誤，請重試";
-                        forceResetRecording();
-                    }
-                    currentWs.close();
-                }
-            };
-
-            currentWs.onerror = (err) => {
-                console.error("[WS] WebSocket 異常:", err);
-                instructionEl.innerText = "連線失敗，請檢查網路";
-                forceResetRecording();
-            };
-        }
-
-        function stopRecordingAndAssess() {
-            if (!isRecording) return;
-            isRecording = false;
-            console.log("[ACTION] 停止錄音並送出結算");
-
-            recordBtn.classList.remove('recording-pulse');
-            recordBtn.innerText = "⏳ 評分中...";
-            recordBtn.disabled = true;
-
-            if (stopTimeout) clearTimeout(stopTimeout);
-
-            // 【移除】音量检测逻辑，直接发送尾帧
-            if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
-            if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(t => t.stop());
-                mediaStream = null;
-                console.log("[AUDIO] 麥克風已釋放");
             }
 
-            if (currentWs && currentWs.readyState === WebSocket.OPEN) {
-                console.log("[WS] 發送尾幀");
-                currentWs.send(JSON.stringify({
-                    business: { cmd: "auw", aus: 4 },
-                    data: { status: 2, data: "" }
-                }));
-            } else {
-                recordBtn.innerText = "🎙️ 唸咒";
-                recordBtn.disabled = false;
-                if (!isTracingPassed) recordBtn.disabled = true;
+            function parseWSResult(text) {
+                try {
+                    const json = JSON.parse(text);
+                    if (json.code && json.code !== 0) {
+                        console.warn('訊飛 API 錯誤:', json.message);
+                        setStatus('⚠️ 語音評測錯誤: ' + (json.message || '未知錯誤'), true);
+                        return;
+                    }
+                    if (json.data && json.data.data) {
+                        const xmlB64 = json.data.data;
+                        const binaryStr = atob(xmlB64);
+                        const decoder = new TextDecoder('utf-8');
+                        const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
+                        const score = extractScoreFromXML(xml);
+                        if (score !== null) {
+                            handleVoiceResult(score);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('解析結果失敗:', e);
+                }
             }
-        }
 
-        function forceResetRecording() {
-            console.warn("[ACTION] 強制重置錄音狀態");
-            isRecording = false;
-            if (stopTimeout) clearTimeout(stopTimeout);
-            if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
-            if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
-            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-            if (currentWs) { currentWs.close(); }
-            recordBtn.classList.remove('recording-pulse');
-            recordBtn.innerText = "🎙️ 唸咒";
-            recordBtn.disabled = !isTracingPassed;
-        }
+            function extractScoreFromXML(xml) {
+                const match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
+                if (match) return parseFloat(match[1]);
+                const match2 = xml.match(/<score>([\d.]+)<\/score>/i);
+                if (match2) return parseFloat(match2[1]);
+                const nums = xml.match(/\b([\d.]+)\b/g);
+                if (nums) {
+                    const last = nums[nums.length - 1];
+                    const val = parseFloat(last);
+                    if (val > 0 && val <= 100) return val;
+                }
+                return null;
+            }
 
-        // ==========================================
-        // 5. 解析評測結果
-        // ==========================================
-        function parseIseResult(xmlStr) {
-            try {
-                const xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
-                const outerRead = xmlDoc.getElementsByTagName("read_syllable")[0];
-                if (!outerRead) { throw new Error("找不到外層 read_syllable"); }
-                const recPaper = outerRead.getElementsByTagName("rec_paper")[0];
-                if (!recPaper) { throw new Error("找不到 rec_paper"); }
-                const innerRead = recPaper.getElementsByTagName("read_syllable")[0];
-                if (!innerRead) { throw new Error("找不到內層 read_syllable"); }
+            // ============================================================
+            //  9. 語音結果處理
+            // ============================================================
 
-                const score = parseFloat(innerRead.getAttribute("total_score") || 0);
-                console.log(`[ISE] 最終得分: ${score}`);
-
-                if (score > 60) {
-                    instructionEl.innerText = "✨ 咒語成功！妖怪現形了！";
+            function handleVoiceResult(score) {
+                state.voiceScore = Math.round(score);
+                if (state.voiceScore >= THRESHOLDS.voicePass) {
+                    setStatus('🎉 咒語生效！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    instructionEl.innerText = `發音不夠準 (${score.toFixed(1)}分)，再來一次！`;
-                    recordBtn.innerText = "🎙️ 唸咒";
-                    recordBtn.disabled = false;
-                    if (!isTracingPassed) recordBtn.disabled = true;
+                    setStatus(`😤 咒語靈力不足 (${state.voiceScore}分)，再試一次！`, true);
+                    state.phase = 'voice';
+                    btnVoice.disabled = false;
+                    btnVoice.textContent = '🎙️ 唸咒';
+                    closeWS();
                 }
-            } catch (err) {
-                console.error("[XML] 解析異常:", err);
-                instructionEl.innerText = "解析評測結果失敗";
-                recordBtn.innerText = "🎙️ 唸咒";
-                recordBtn.disabled = false;
-                if (!isTracingPassed) recordBtn.disabled = true;
             }
-        }
 
-        function revealMonster() {
-            recordBtn.style.display = 'none';
-            nextBtn.style.display = 'inline-block';
-            document.getElementById('modern-char').innerText = currentTarget.char;
-            document.getElementById('monster-pic').innerText = currentTarget.emoji;
-            document.getElementById('monster-container').classList.add('revealed');
-        }
+            // ============================================================
+            //  10. 妖怪現形
+            // ============================================================
 
-        window.onload = initGame;
+            function revealMonster() {
+                state.phase = 'reveal';
+                const char = state.currentChar;
+                if (!char) return;
+                modernChar.textContent = char.char;
+                animalEmoji.textContent = char.emoji;
+                revealArea.classList.add('show');
+                revealArea.style.display = 'flex';
+                placeholderArea.style.display = 'none';
+                setStatus(`✨ ${char.char} 已現形！ 繼續伏妖之旅？`, false);
+                btnVoice.style.display = 'none';
+                btnNext.style.display = 'inline-flex';
+                btnVerify.disabled = true;
+                btnClear.disabled = true;
+                state.canvasLocked = true;
+                closeWS();
+                updateScoreBadge(`✨ 靈力 ${state.drawScore}/${state.voiceScore}`);
+            }
+
+            // ============================================================
+            //  11. 核心流程控制
+            // ============================================================
+
+            function resetForNewChar() {
+                closeWS();
+                state.isRecording = false;
+                state.isVerifying = false;
+                state.isVoiceProcessing = false;
+                state.audioBuffer = [];
+                state.drawScore = 0;
+                state.voiceScore = 0;
+                state.canvasLocked = false;
+                state.phase = 'draw';
+                state.wsReady = false;
+                if (state.recordTimer) {
+                    clearTimeout(state.recordTimer);
+                    state.recordTimer = null;
+                }
+                drawHistory = [];
+                renderOracle();
+                revealArea.classList.remove('show');
+                revealArea.style.display = 'none';
+                placeholderArea.style.display = 'flex';
+                pinyinDisplay.classList.remove('show');
+                pinyinDisplay.textContent = '';
+                pinyinDisplay.style.display = 'none';
+                btnVoice.style.display = 'inline-flex';
+                btnNext.style.display = 'none';
+                btnVerify.disabled = false;
+                btnClear.disabled = false;
+                btnVoice.disabled = true;
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+                updateScoreBadge('靈力 · 待啟動');
+            }
+
+            function pickRandomChar() {
+                const idx = Math.floor(Math.random() * CHARACTERS.length);
+                return CHARACTERS[idx];
+            }
+
+            function initLevel() {
+                resetForNewChar();
+                state.currentChar = pickRandomChar();
+                renderOracle();
+                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
+                updateScoreBadge(`🎯 目標: ${state.currentChar.char}`);
+                btnVoice.disabled = true;
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+            }
+
+            function handleVerify() {
+                if (state.isVerifying || state.phase === 'reveal') return;
+                if (state.canvasLocked) {
+                    setStatus('⚠️ 符文已驗證通過，請進行唸咒', true);
+                    return;
+                }
+                if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
+                    setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
+                    return;
+                }
+                state.isVerifying = true;
+                btnVerify.disabled = true;
+                setStatus('🔍 比對符文靈力 ...', false);
+                setTimeout(() => {
+                    const score = computeF1Score();
+                    state.drawScore = score;
+                    state.isVerifying = false;
+                    btnVerify.disabled = false;
+                    if (score >= THRESHOLDS.drawPass) {
+                        state.canvasLocked = true;
+                        state.phase = 'voice';
+                        setStatus(`✅ 符文契合度 ${score}分！ 咒語已解鎖`, false);
+                        pinyinDisplay.textContent = state.currentChar.pinyin;
+                        pinyinDisplay.style.display = 'block';
+                        setTimeout(() => {
+                            pinyinDisplay.classList.add('show');
+                        }, 50);
+                        btnVoice.disabled = false;
+                        btnVoice.textContent = '🎙️ 唸咒';
+                        updateScoreBadge(`✅ 符文 ${score}分 · 請唸咒`);
+                        setStatus(`🗣️ 請唸出咒語：<span class="highlight">${state.currentChar.pinyin}</span>`, false);
+                    } else {
+                        setStatus(`❌ 符文契合度 ${score}分，再努力描寫！ (需 ≥ ${THRESHOLDS.drawPass}分)`, true);
+                        updateScoreBadge(`❌ ${score}分 · 未過關`);
+                    }
+                }, 500);
+            }
+
+            function handleClear() {
+                if (state.canvasLocked || state.phase === 'reveal') return;
+                drawHistory = [];
+                renderOracle();
+                setStatus('✍️ 已清除，重新描寫', false);
+            }
+
+            function handleNext() {
+                initLevel();
+            }
+
+            function handleVoiceToggle() {
+                if (state.phase !== 'voice') {
+                    setStatus('⚠️ 請先通過符文驗證', true);
+                    return;
+                }
+                if (state.isRecording) {
+                    stopRecording(false);
+                } else {
+                    startRecording();
+                }
+            }
+
+            // ============================================================
+            //  12. 輔助函數
+            // ============================================================
+
+            function setStatus(html, isError = false) {
+                statusText.innerHTML = html;
+                statusText.style.color = isError ? '#ff7a7a' : '#f0e6c5';
+                if (isError) {
+                    statusText.style.textShadow = '0 0 30px rgba(255,70,70,0.15)';
+                } else {
+                    statusText.style.textShadow = '0 0 20px rgba(255,215,100,0.05)';
+                }
+            }
+
+            function updateScoreBadge(text) {
+                scoreBadge.textContent = text;
+            }
+
+            function closeWS() {
+                if (state.wsConnection) {
+                    try {
+                        state.wsConnection.close();
+                    } catch (e) {}
+                    state.wsConnection = null;
+                }
+                state.wsReady = false;
+            }
+
+            // ============================================================
+            //  13. 初始化
+            // ============================================================
+
+            function init() {
+                resizeCanvas();
+                bindCanvasEvents();
+                btnClear.addEventListener('click', handleClear);
+                btnVerify.addEventListener('click', handleVerify);
+                btnVoice.addEventListener('click', handleVoiceToggle);
+                btnNext.addEventListener('click', handleNext);
+                let resizeTimer;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(() => {
+                        resizeCanvas();
+                    }, 200);
+                });
+                initLevel();
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                }, 600);
+                document.addEventListener('touchstart', () => {
+                    if (state.audioContext && state.audioContext.state === 'suspended') {
+                        state.audioContext.resume().catch(() => {});
+                    }
+                }, { passive: true });
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (真實 API 模式)');
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        })();
     </script>
+
 </body>
 </html>
