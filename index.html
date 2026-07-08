@@ -405,7 +405,7 @@
                 APPID: '2600b137',
                 API_KEY: '8b012124ed213c06974cd469f29e134b',
                 API_SECRET: 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj',
-                WSS_URL: 'wss://iat-api.xfyun.cn/v2/iat', // 語音聽寫
+                WSS_URL: 'wss://iat-api.xfyun.cn/v2/iat',
             };
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
             const THRESHOLDS = { drawPass: 45 };
@@ -420,6 +420,8 @@
                 emoji: '🐑',
                 imgSrc: 'images/羊_1.png',
                 img: null,
+                // 同音字（簡體）
+                homophones: ['羊', '阳', '杨', '扬', '洋', '佯', '疡', '徉', '炀', '烊', '旸', '飏', '蛘', '阚'] // 仅做参考，实际用拼音比较
             }, {
                 id: 'ma',
                 char: '馬',
@@ -428,6 +430,7 @@
                 emoji: '🐴',
                 imgSrc: 'images/馬_1.png',
                 img: null,
+                homophones: ['马', '码', '玛', '蚂', '杩', '砝', '犸', '唛', '遤']
             }, {
                 id: 'niu',
                 char: '牛',
@@ -436,6 +439,7 @@
                 emoji: '🐮',
                 imgSrc: 'images/牛_1.png',
                 img: null,
+                homophones: ['牛', '妞', '扭', '纽', '钮', '拗', '忸', '沤']
             }, {
                 id: 'niao',
                 char: '鳥',
@@ -444,6 +448,7 @@
                 emoji: '🐦',
                 imgSrc: 'images/鳥_1.png',
                 img: null,
+                homophones: ['鸟', '袅', '嬲', '茑']
             }, {
                 id: 'yu',
                 char: '魚',
@@ -452,6 +457,7 @@
                 emoji: '🐟',
                 imgSrc: 'images/魚_1.png',
                 img: null,
+                homophones: ['鱼', '渔', '余', '于', '娱', '愚', '隅', '俞', '逾', '渝', '瑜', '萸', '榆', '虞', '舆', '玙']
             }];
 
             // ========== 3. 狀態 ==========
@@ -476,7 +482,8 @@
                 flushResolve: null,
                 isFlushing: false,
                 recognizedText: '',
-                isFirstAudioFrame: true, // 标记是否第一帧音频
+                // 预建拼音映射表（字->拼音），包括简体+繁体
+                pinyinMap: {},
             };
 
             // ========== 4. DOM ==========
@@ -537,10 +544,17 @@
                 }
                 if (drawHistory.length > 0) {
                     ctx.save();
-                    ctx.strokeStyle = '#5a4a3a';
+                    // 如果已通过验证，字迹变金色
+                    if (state.canvasLocked && state.phase === 'voice') {
+                        ctx.strokeStyle = '#ffd700';
+                        ctx.shadowColor = 'rgba(255,215,0,0.4)';
+                        ctx.shadowBlur = 20;
+                    } else {
+                        ctx.strokeStyle = '#5a4a3a';
+                        ctx.shadowColor = 'rgba(100,80,60,0.15)';
+                        ctx.shadowBlur = 10;
+                    }
                     ctx.lineWidth = Math.max(3, canvasW * 0.02);
-                    ctx.shadowColor = 'rgba(100,80,60,0.15)';
-                    ctx.shadowBlur = 10;
                     ctx.globalAlpha = 0.85;
                     for (const path of drawHistory) {
                         if (path.length < 2) continue;
@@ -761,13 +775,12 @@
             let recordTimer = null;
             let sourceNode = null;
 
-            // ---------- 音頻發送（修正為聽寫格式） ----------
+            // ---------- 音頻發送（聽寫格式） ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
                     return;
                 }
-                // 聽寫的數據幀不需要 business，只需要 data
                 const payload = {
                     data: {
                         status: 1,
@@ -776,9 +789,6 @@
                         audio: b64Data
                     }
                 };
-                // 如果是第一帧音频，将 status 改为 0（但我们已经先发了首帧 status=0，所以这里不用改）
-                // 首帧已经发送了 status:0，所以这里 status:1
-                // 但我们有音频缓冲计数，可以使用
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
@@ -815,6 +825,21 @@
                     setStatus('⚠️ 麥克風權限被拒絕，請允許後重試', true);
                     return false;
                 }
+            }
+
+            // ---------- 預連接WebSocket（在驗證通過後立即執行） ----------
+            function preConnectWebSocket() {
+                if (state.wsReady) {
+                    console.log('[WS] 已就緒，無需重複連接');
+                    return;
+                }
+                if (state.wsConnection && (state.wsConnection.readyState === WebSocket.CONNECTING ||
+                        state.wsConnection.readyState === WebSocket.OPEN)) {
+                    console.log('[WS] 正在連接中...');
+                    return;
+                }
+                console.log('[WS] 預連接 WebSocket ...');
+                connectWebSocket().catch(e => console.warn('[WS] 預連接失敗:', e));
             }
 
             // ---------- 開始錄音 ----------
@@ -866,10 +891,17 @@
                         audioWorkletNode.connect(audioContext.destination);
                         console.log('✅ AudioWorkletNode 創建成功');
                     }
+
+                    // 确保 WebSocket 已连接
+                    if (!state.wsReady) {
+                        // 如果还未连接，尝试连接（但应该已由预连接准备好）
+                        console.log('[WS] 等待 WebSocket 就緒...');
+                        await connectWebSocket();
+                    }
+
                     isRecording = true;
                     state.isRecording = true;
                     state.recordStartTime = Date.now();
-                    state.isFirstAudioFrame = true; // 重置标记
                     btnVoice.textContent = '⏹️ 停止錄音';
                     btnVoice.classList.add('recording');
                     btnVoice.disabled = false;
@@ -878,10 +910,6 @@
                     recordTimer = setTimeout(() => {
                         if (isRecording) stopRecording(true);
                     }, AUDIO_CONFIG.maxRecordSeconds * 1000);
-                    if (!state.wsReady) {
-                        console.log('[WS] 開始連接 WebSocket ...');
-                        await connectWebSocket();
-                    }
                 } catch (e) {
                     console.error('錄音啟動失敗:', e);
                     setStatus('⚠️ 無法存取麥克風: ' + e.message, true);
@@ -1009,6 +1037,17 @@
                     console.log('[WS] 已就緒，無需重複連接');
                     return;
                 }
+                // 如果已有连接且状态为连接中，等待
+                if (state.wsConnection && state.wsConnection.readyState === WebSocket.CONNECTING) {
+                    return new Promise((resolve) => {
+                        const check = setInterval(() => {
+                            if (state.wsReady) {
+                                clearInterval(check);
+                                resolve();
+                            }
+                        }, 100);
+                    });
+                }
                 try {
                     const url = buildWSSUrl();
                     state.wsConnection = new WebSocket(url);
@@ -1057,8 +1096,8 @@
                         language: 'zh_cn',
                         domain: 'iat',
                         accent: 'mandarin',
-                        // 可選參數：eos, dwa, ptt, pcm, ltc, rlang, vinfo, nunum, nbest, wbest
-                        // 這裡保持簡潔
+                        rlang: 'zh-cn', // 返回简体
+                        ptt: 1, // 标点符号
                     },
                     data: { status: 0 }
                 };
@@ -1097,22 +1136,21 @@
                         setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
-                    // 聽寫結果在 data.result.ws 中，提取文字
+                    // 提取文字（简体）
                     let recognized = '';
                     if (json.data && json.data.result && json.data.result.ws) {
                         const ws = json.data.result.ws;
                         for (let i = 0; i < ws.length; i++) {
                             const cw = ws[i].cw;
                             if (cw && cw.length > 0) {
-                                // 取第一个候选（通常是最佳结果）
                                 recognized += cw[0].w;
                             }
                         }
-                        // 去除空格、标点
+                        // 去除空格和标点
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
-                        console.log('[WS] 識別文字:', recognized);
+                        console.log('[WS] 識別文字(簡體):', recognized);
                         state.recognizedText = recognized;
-                        // 如果 status==2 或者 ls==true（ls可能表示最后一片），进行比对
+                        // 判断是否最终结果
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             handleRecognitionResult(recognized);
                         }
@@ -1124,14 +1162,44 @@
                 }
             }
 
+            // ========== 9. 同音字比對 ==========
+            // 构建拼音映射表（简繁体统一）
+            function buildPinyinMap() {
+                const map = {};
+                // 为每个字添加自身及同音字
+                CHARACTERS.forEach(item => {
+                    const pinyin = item.pinyinRaw;
+                    // 自身（包括繁体）
+                    map[item.char] = pinyin;
+                    // 同音字（简体）
+                    if (item.homophones) {
+                        item.homophones.forEach(h => {
+                            map[h] = pinyin;
+                        });
+                    }
+                });
+                return map;
+            }
+
+            // 在初始加载时构建
+            const pinyinMap = buildPinyinMap();
+
             function handleRecognitionResult(recognized) {
-                const target = state.currentChar.char;
-                // 簡單比對
-                if (recognized === target) {
+                const targetChar = state.currentChar.char;
+                const targetPinyin = pinyinMap[targetChar];
+                // 获取识别字的拼音（如果存在映射）
+                const recognizedPinyin = pinyinMap[recognized] || null;
+
+                // 比较拼音是否相同（不考虑声调，只考虑音节？保留声调比较精确）
+                // 这里直接比较完整拼音（含数字声调）
+                const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
+
+                // 不显示具体识别字，只显示成功或失败
+                if (isMatch) {
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 咒語比對失敗（識別為「${recognized}」），請再試一次！`, true);
+                    setStatus(`😤 咒語比對失敗，請再試一次！`, true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1139,7 +1207,7 @@
                 }
             }
 
-            // ========== 9. 妖怪現形 ==========
+            // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
@@ -1156,9 +1224,11 @@
                 btnClear.disabled = true;
                 state.canvasLocked = true;
                 closeWS();
+                // 重新渲染画布让字迹变金色
+                renderOracle();
             }
 
-            // ========== 10. 流程控制 ==========
+            // ========== 11. 流程控制 ==========
             function resetForNewChar() {
                 closeWS();
                 isRecording = false;
@@ -1251,6 +1321,10 @@
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
                         setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
+                        // 字迹变金色
+                        renderOracle();
+                        // 预先连接 WebSocket，确保录音时已就绪
+                        preConnectWebSocket();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
                     }
@@ -1272,7 +1346,7 @@
                 else startRecording();
             }
 
-            // ========== 11. 輔助 ==========
+            // ========== 12. 輔助 ==========
             function setStatus(html, isError = false) {
                 statusText.innerHTML = html;
                 statusText.style.color = isError ? '#a94442' : '#3a2e1e';
@@ -1287,7 +1361,7 @@
                 console.log('[WS] 已關閉連接');
             }
 
-            // ========== 12. 圖片預加載 ==========
+            // ========== 13. 圖片預加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
                     return new Promise((resolve) => {
@@ -1327,7 +1401,7 @@
                 return Promise.all(promises);
             }
 
-            // ========== 13. 初始化 ==========
+            // ========== 14. 初始化 ==========
             async function init() {
                 loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
                 await loadImages();
@@ -1349,7 +1423,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (修正聽寫API格式)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (預連接WebSocket+同音字比對)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
