@@ -911,11 +911,9 @@
                 state.isRecording = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
-                // 停止 Worklet 處理
                 if (audioWorkletNode) {
                     try {
                         audioWorkletNode.port.postMessage({ type: 'stop' });
-                        // 断开连接以释放资源
                         audioWorkletNode.disconnect();
                         audioWorkletNode = null;
                     } catch (e) {}
@@ -1064,6 +1062,7 @@
                             handleVoiceResult(score);
                         } else {
                             console.warn('[WS] 無法從 XML 提取分數');
+                            setStatus('⚠️ 評測結果解析失敗，請重試', true);
                         }
                     } else {
                         console.log('[WS] 暫無結果數據');
@@ -1073,20 +1072,17 @@
                 }
             }
 
-            // ===== 修正提取分數的正則，支持 value 屬性 =====
+            // ===== 修復分數提取：支持 total_score="..." 等多種格式 =====
             function extractScoreFromXML(xml) {
-                // 嘗試匹配 <total_score value="..."> 或 <total_score>...</total_score>
-                let match = xml.match(/<total_score\s+value="([\d.]+)"\/?>/i);
+                // 匹配 total_score="...", total_score value="...", <total_score>...</total_score>
+                let match = xml.match(/total_score[=>\s]+"([\d.]+)"/i);
                 if (match) return parseFloat(match[1]);
                 match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
                 if (match) return parseFloat(match[1]);
-                // 嘗試找 <score> 標籤
                 match = xml.match(/<score>([\d.]+)<\/score>/i);
                 if (match) return parseFloat(match[1]);
-                // 最後嘗試匹配任何數字（兜底）
                 const nums = xml.match(/\b([\d.]+)\b/g);
                 if (nums) {
-                    // 取最後一個數字（通常是總分）
                     const last = nums[nums.length - 1];
                     const val = parseFloat(last);
                     if (val >= 0 && val <= 100) return val;
@@ -1101,9 +1097,8 @@
                     setStatus('🎉 咒語生效！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    // 分數為0或太低，提示用戶
                     if (state.voiceScore === 0) {
-                        setStatus('🔇 未檢測到語音，請大聲朗讀咒語！', true);
+                        setStatus('🔇 未檢測到有效語音，請大聲朗讀咒語！', true);
                     } else {
                         setStatus(`😤 咒語靈力不足 (${state.voiceScore}分)，再試一次！`, true);
                     }
@@ -1316,7 +1311,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (修復分數提取 + 語音引導)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (完整修復分數提取)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
