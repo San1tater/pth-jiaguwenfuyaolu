@@ -7,7 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
     </script>
     <style>
-        /* ===== 全局重置 ===== */
         * {
             margin: 0;
             padding: 0;
@@ -35,7 +34,6 @@
             background: #f5f0e8;
         }
 
-        /* ===== 左側面板 ===== */
         #left-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -65,7 +63,6 @@
             100% { opacity: 0.8; transform: scale(1.05); }
         }
 
-        /* ===== 狀態提示 ===== */
         #status-area {
             width: 100%;
             max-width: 580px;
@@ -113,7 +110,6 @@
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        /* ===== 畫布 ===== */
         #canvas-wrapper {
             position: relative;
             width: 100%;
@@ -147,7 +143,6 @@
             z-index: 1;
         }
 
-        /* ===== 按鈕區 ===== */
         #controls {
             display: flex;
             flex-wrap: wrap;
@@ -199,22 +194,6 @@
             transform: none;
             box-shadow: none;
         }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.5);
-            border-color: rgba(180, 150, 100, 0.2);
-            color: #3a2e1e;
-        }
-        .btn-secondary:active { background: rgba(200, 180, 160, 0.3); }
-        .btn-secondary:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-danger {
-            background: rgba(200, 70, 70, 0.1);
-            border-color: rgba(200, 70, 70, 0.25);
-            color: #a94442;
-        }
         .btn-voice {
             background: linear-gradient(135deg, rgba(100, 150, 255, 0.1), rgba(60, 100, 200, 0.05));
             border-color: rgba(60, 100, 200, 0.2);
@@ -243,7 +222,6 @@
         }
         .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
-        /* ===== 右側面板 ===== */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -285,7 +263,6 @@
             100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
-        /* ===== 妖怪展示 ===== */
         #reveal-area {
             display: none;
             flex-direction: column;
@@ -347,7 +324,6 @@
             animation: spinArray 30s linear infinite;
         }
 
-        /* ===== 載入遮罩 ===== */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -429,13 +405,13 @@
                 APPID: '2600b137',
                 API_KEY: '8b012124ed213c06974cd469f29e134b',
                 API_SECRET: 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj',
-                WSS_URL: 'wss://ise-api.xfyun.cn/v2/open-ise',
+                WSS_URL: 'wss://iat-api.xfyun.cn/v2/iat', // 語音聽寫
             };
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
-            const THRESHOLDS = { drawPass: 45, voicePass: 60 };
-            const MIN_RECORD_DURATION = 1000; // 最短录音时长（毫秒）
+            const THRESHOLDS = { drawPass: 45 };
+            const MIN_RECORD_DURATION = 1000;
 
-            // ========== 2. 字庫（圖片文件名使用繁體） ==========
+            // ========== 2. 字庫 ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -486,7 +462,6 @@
                 isRecording: false,
                 isVerifying: false,
                 drawScore: 0,
-                voiceScore: 0,
                 audioContext: null,
                 audioWorkletNode: null,
                 mediaStream: null,
@@ -498,8 +473,9 @@
                 recordStartTime: 0,
                 minDurationTimer: null,
                 isFinalizing: false,
-                flushResolve: null, // 用于 flush 异步等待
+                flushResolve: null,
                 isFlushing: false,
+                recognizedText: '',
             };
 
             // ========== 4. DOM ==========
@@ -627,7 +603,7 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 6. 像素比對 (F1) ==========
+            // ========== 6. 像素比對 ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -695,7 +671,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) — 支援 flush ==========
+            // ========== 7. 語音錄製 (Worklet) ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -714,7 +690,6 @@
                 this.port.postMessage({ type: 'flushed' });
                 return;
               }
-              // 合并所有数据
               let totalLen = 0;
               for (const chunk of this.buffer) totalLen += chunk.length;
               const merged = new Float32Array(totalLen);
@@ -724,16 +699,13 @@
                 offset += chunk.length;
               }
               this.buffer = [];
-              // 转换为 PCM
               const pcm = new Int16Array(merged.length);
               for (let i = 0; i < merged.length; i++) {
                 let s = merged[i];
                 s = Math.max(-1, Math.min(1, s));
                 pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
               }
-              // 发送音频数据
               this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: true }, [pcm.buffer]);
-              // 通知刷新完成
               this.port.postMessage({ type: 'flushed' });
             }
             process(inputs, outputs, parameters) {
@@ -866,7 +838,6 @@
                         await audioContext.audioWorklet.addModule(initWorklet());
                         sourceNode = audioContext.createMediaStreamSource(mediaStream);
                         audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
-                        // 监听 Worklet 消息
                         audioWorkletNode.port.onmessage = (e) => {
                             if (e.data.type === 'audio' && isRecording && state.wsReady) {
                                 const buffer = e.data.buffer;
@@ -878,7 +849,6 @@
                                 const b64 = btoa(binary);
                                 sendAudioChunk(b64, e.data.isFlush || false);
                             }
-                            // 处理 flush 完成
                             if (e.data.type === 'flushed') {
                                 console.log('[Worklet] flush 完成');
                                 if (state.flushResolve) {
@@ -897,7 +867,7 @@
                     btnVoice.textContent = '⏹️ 停止錄音';
                     btnVoice.classList.add('recording');
                     btnVoice.disabled = false;
-                    setStatus('🎤 請大聲朗讀咒語 ... (最長 8 秒)', false);
+                    setStatus('🎤 請朗讀咒語（語音識別自動比對）', false);
                     if (recordTimer) clearTimeout(recordTimer);
                     recordTimer = setTimeout(() => {
                         if (isRecording) stopRecording(true);
@@ -913,23 +883,20 @@
                 }
             }
 
-            // ---------- 停止錄音（核心修改） ----------
+            // ---------- 停止錄音 ----------
             function stopRecording(auto = false) {
                 if (!isRecording) return;
                 if (state.isFinalizing) return;
 
-                // 计算已录音时长
                 const elapsed = Date.now() - state.recordStartTime;
                 const remaining = MIN_RECORD_DURATION - elapsed;
 
-                // 立即标记为停止中，但保持 isRecording 为 true，以便继续接收数据
                 state.isFinalizing = true;
                 btnVoice.disabled = true;
                 btnVoice.textContent = '⏳ 處理中...';
                 btnVoice.classList.remove('recording');
-                setStatus('⏳ 咒語已送出，請等候 ...', false);
+                setStatus('⏳ 語音識別中，請等候 ...', false);
 
-                // 如果时长不足，延后执行真正的停止
                 if (remaining > 0) {
                     console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
                     if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
@@ -942,12 +909,10 @@
                 }
             }
 
-            // ---------- 最终停止（断开、flush、发送尾帧） ----------
             function finalizeStop() {
-                if (state.isFlushing) return; // 防止重复执行
+                if (state.isFlushing) return;
                 state.isFlushing = true;
 
-                // 断开麦克风输入，不再有新数据
                 if (sourceNode) {
                     try {
                         sourceNode.disconnect();
@@ -955,22 +920,16 @@
                         console.log('[錄音] sourceNode 已斷開');
                     } catch (e) {}
                 }
-
-                // 取消定时器
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
                 if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = null; }
 
-                // 向 Worklet 发送 flush 指令，强制发送剩余缓冲区数据
                 if (audioWorkletNode) {
                     console.log('[Worklet] 發送 flush 指令');
                     audioWorkletNode.port.postMessage({ type: 'flush' });
-
-                    // 等待 flush 完成，然后发送尾帧
                     const flushPromise = new Promise((resolve) => {
                         state.flushResolve = resolve;
-                        // 超时保护，防止 Worklet 无响应
                         setTimeout(() => {
                             if (state.flushResolve) {
                                 console.warn('[Worklet] flush 超時，強制繼續');
@@ -979,32 +938,27 @@
                             }
                         }, 300);
                     });
-
                     flushPromise.then(() => {
-                        // 刷新完成，发送尾帧
                         if (state.wsReady) {
                             sendAudioEnd();
                         } else {
                             console.warn('WS未就緒，無法發送尾幀');
                         }
-                        // 断开 Worklet
                         if (audioWorkletNode) {
                             try {
                                 audioWorkletNode.disconnect();
                                 audioWorkletNode = null;
                             } catch (e) {}
                         }
-                        // 重置状态
                         isRecording = false;
                         state.isRecording = false;
                         state.isFinalizing = false;
                         state.isFlushing = false;
                         resetVoiceUI();
-                        setStatus('⏳ 等待咒語評測 ...', false);
+                        setStatus('⏳ 等待識別結果 ...', false);
                         console.log('[錄音] 已停止，等待服務器響應');
                     });
                 } else {
-                    // 无 Worklet，直接发送尾帧
                     if (state.wsReady) {
                         sendAudioEnd();
                     }
@@ -1013,7 +967,7 @@
                     state.isFinalizing = false;
                     state.isFlushing = false;
                     resetVoiceUI();
-                    setStatus('⏳ 等待咒語評測 ...', false);
+                    setStatus('⏳ 等待識別結果 ...', false);
                 }
             }
 
@@ -1029,12 +983,12 @@
                 state.isFlushing = false;
             }
 
-            // ========== 8. WebSocket 與訊飛 API ==========
+            // ========== 8. WebSocket 與訊飛語音聽寫 ==========
             function buildWSSUrl() {
                 const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
                 const host = new URL(WSS_URL).host;
                 const date = new Date().toUTCString();
-                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/open-ise HTTP/1.1`;
+                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/iat HTTP/1.1`;
                 const sha = CryptoJS.HmacSHA256(signatureOrigin, API_SECRET);
                 const signature = CryptoJS.enc.Base64.stringify(sha);
                 const authOrigin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
@@ -1085,27 +1039,21 @@
                 }
             }
 
+            // 首幀（聽寫參數）
             function sendInitFrame() {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('[WS] 未就緒，無法發送首幀');
                     return;
                 }
-                const char = state.currentChar;
-                if (!char) return;
-                const text = '\uFEFF' + char.char + '\n' + char.pinyinRaw;
                 const payload = {
                     common: { app_id: XF_CONFIG.APPID },
                     business: {
-                        sub: 'ise',
-                        ent: 'cn_vip',
-                        category: 'read_syllable',
-                        cmd: 'ssb',
+                        sub: 'iat',
+                        ent: 'sms', // 普通聽寫
                         auf: 'audio/L16;rate=16000',
                         aue: 'raw',
-                        text: text,
-                        ttp_skip: true,
-                        rst: 'entirety',
-                        ise_unite: '1',
+                        vad_en: '1', // 啟用VAD
+                        ttp_skip: '1', // 跳過文本傳輸
                     },
                     data: { status: 0 }
                 };
@@ -1113,6 +1061,8 @@
                 console.log('[WS] 發送首幀:', json);
                 state.wsConnection.send(json);
             }
+
+            // 音頻幀與尾幀同之前（sendAudioChunk / sendAudioEnd）
 
             function handleWSMessage(data) {
                 try {
@@ -1141,59 +1091,42 @@
                     console.log('[WS] 解析 JSON:', json);
                     if (json.code && json.code !== 0) {
                         console.warn('[WS] 訊飛 API 錯誤:', json.message);
-                        setStatus('⚠️ 語音評測錯誤: ' + (json.message || '未知錯誤'), true);
+                        setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
-                    if (json.data && json.data.data) {
-                        const xmlB64 = json.data.data;
-                        const binaryStr = atob(xmlB64);
-                        const decoder = new TextDecoder('utf-8');
-                        const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
-                        console.log('[WS] 評測結果 XML:', xml);
-                        const score = extractScoreFromXML(xml);
-                        if (score !== null) {
-                            console.log('[WS] 得分:', score);
-                            handleVoiceResult(score);
-                        } else {
-                            console.warn('[WS] 無法從 XML 提取分數');
-                            setStatus('⚠️ 評測結果解析失敗，請重試', true);
+                    // 聽寫結果在 data 中，格式可能为 { data: { result: { text: '...' } } }
+                    if (json.data && json.data.result) {
+                        let recognized = json.data.result.text || '';
+                        // 去除空格、標點
+                        recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
+                        console.log('[WS] 識別文字:', recognized);
+                        state.recognizedText = recognized;
+                        // 如果 status==2，表示最終結果，進行比對
+                        if (json.data.status === 2) {
+                            handleRecognitionResult(recognized);
                         }
+                    } else if (json.data && json.data.text) {
+                        let recognized = json.data.text || '';
+                        recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
+                        state.recognizedText = recognized;
+                        // 可能沒有 status，直接比對
+                        handleRecognitionResult(recognized);
                     } else {
-                        console.log('[WS] 暫無結果數據');
+                        console.log('[WS] 暫無識別結果');
                     }
                 } catch (e) {
                     console.error('[WS] 解析結果失敗:', e, '原始文本:', text);
                 }
             }
 
-            function extractScoreFromXML(xml) {
-                let match = xml.match(/total_score[=>\s]+"([\d.]+)"/i);
-                if (match) return parseFloat(match[1]);
-                match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
-                if (match) return parseFloat(match[1]);
-                match = xml.match(/<score>([\d.]+)<\/score>/i);
-                if (match) return parseFloat(match[1]);
-                const nums = xml.match(/\b([\d.]+)\b/g);
-                if (nums) {
-                    const last = nums[nums.length - 1];
-                    const val = parseFloat(last);
-                    if (val >= 0 && val <= 100) return val;
-                }
-                return null;
-            }
-
-            // ========== 9. 語音結果處理 ==========
-            function handleVoiceResult(score) {
-                state.voiceScore = Math.round(score);
-                if (state.voiceScore >= THRESHOLDS.voicePass) {
-                    setStatus('🎉 咒語生效！妖怪現形！', false);
+            function handleRecognitionResult(recognized) {
+                const target = state.currentChar.char;
+                // 簡單比對：去除空格後相等
+                if (recognized === target) {
+                    setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    if (state.voiceScore === 0) {
-                        setStatus('🔇 未檢測到有效語音，請大聲朗讀咒語！', true);
-                    } else {
-                        setStatus(`😤 咒語靈力不足 (${state.voiceScore}分)，再試一次！`, true);
-                    }
+                    setStatus(`😤 咒語比對失敗（識別為「${recognized}」），請再試一次！`, true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1201,7 +1134,7 @@
                 }
             }
 
-            // ========== 10. 妖怪現形 ==========
+            // ========== 9. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
@@ -1220,17 +1153,17 @@
                 closeWS();
             }
 
-            // ========== 11. 流程控制 ==========
+            // ========== 10. 流程控制 ==========
             function resetForNewChar() {
                 closeWS();
                 isRecording = false;
                 state.isRecording = false;
                 state.audioBuffer = [];
                 state.drawScore = 0;
-                state.voiceScore = 0;
                 state.canvasLocked = false;
                 state.phase = 'draw';
                 state.wsReady = false;
+                state.recognizedText = '';
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
                 if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
@@ -1312,7 +1245,7 @@
                         setTimeout(() => pinyinDisplay.classList.add('show'), 50);
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
-                        setStatus(`🗣️ 請唸出咒語：<span class="highlight">${state.currentChar.pinyinTone}</span>`, false);
+                        setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
                     }
@@ -1334,7 +1267,7 @@
                 else startRecording();
             }
 
-            // ========== 12. 輔助 ==========
+            // ========== 11. 輔助 ==========
             function setStatus(html, isError = false) {
                 statusText.innerHTML = html;
                 statusText.style.color = isError ? '#a94442' : '#3a2e1e';
@@ -1349,7 +1282,7 @@
                 console.log('[WS] 已關閉連接');
             }
 
-            // ========== 13. 圖片預加載 ==========
+            // ========== 12. 圖片預加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
                     return new Promise((resolve) => {
@@ -1389,7 +1322,7 @@
                 return Promise.all(promises);
             }
 
-            // ========== 14. 初始化 ==========
+            // ========== 13. 初始化 ==========
             async function init() {
                 loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
                 await loadImages();
@@ -1411,7 +1344,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (徹底修復數據丟失)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (改用語音聽寫比對)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
