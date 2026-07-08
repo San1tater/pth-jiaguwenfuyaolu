@@ -391,9 +391,6 @@
             animation: spinArray 30s linear infinite;
         }
 
-        /* ===== 移除左下角狀態提示 ===== */
-        /* #score-badge 已刪除 */
-
         /* ===== 載入遮罩 ===== */
         #loading-overlay {
             position: fixed;
@@ -456,7 +453,6 @@
                 <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
                 <button class="btn btn-success" id="btnNext" style="display:none;">🔮 尋找下個妖怪</button>
             </div>
-            <!-- 已移除左下角狀態提示 -->
         </div>
 
         <div id="right-panel">
@@ -545,8 +541,7 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
-                imagesLoaded: false,
-                usedCharIds: [], // 已用過的字 ID 列表，用於去重
+                usedCharIds: [],
             };
 
             // ========== 4. DOM ==========
@@ -749,8 +744,10 @@
               super();
               this.buffer = [];
               this.chunkSize = 640;
+              this.running = true;
             }
             process(inputs, outputs, parameters) {
+              if (!this.running) return false;
               const input = inputs[0];
               if (!input || input.length === 0) return true;
               const channelData = input[0];
@@ -914,6 +911,15 @@
                 state.isRecording = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
+                // 停止 Worklet 處理
+                if (audioWorkletNode) {
+                    try {
+                        audioWorkletNode.port.postMessage({ type: 'stop' });
+                        // 断开连接以释放资源
+                        audioWorkletNode.disconnect();
+                        audioWorkletNode = null;
+                    } catch (e) {}
+                }
                 if (state.wsReady) {
                     sendAudioEnd();
                 } else {
@@ -1067,14 +1073,24 @@
                 }
             }
 
+            // ===== 修正提取分數的正則，支持 value 屬性 =====
             function extractScoreFromXML(xml) {
-                const match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
+                // 嘗試匹配 <total_score value="..."> 或 <total_score>...</total_score>
+                let match = xml.match(/<total_score\s+value="([\d.]+)"\/?>/i);
                 if (match) return parseFloat(match[1]);
-                const match2 = xml.match(/<score>([\d.]+)<\/score>/i);
-                if (match2) return parseFloat(match2[1]);
+                match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
+                if (match) return parseFloat(match[1]);
+                // 嘗試找 <score> 標籤
+                match = xml.match(/<score>([\d.]+)<\/score>/i);
+                if (match) return parseFloat(match[1]);
+                // 最後嘗試匹配任何數字（兜底）
                 const nums = xml.match(/\b([\d.]+)\b/g);
-                if (nums) { const last = nums[nums.length - 1]; const val = parseFloat(last); if (val > 0 && val <= 100)
-                    return val; }
+                if (nums) {
+                    // 取最後一個數字（通常是總分）
+                    const last = nums[nums.length - 1];
+                    const val = parseFloat(last);
+                    if (val >= 0 && val <= 100) return val;
+                }
                 return null;
             }
 
@@ -1085,7 +1101,12 @@
                     setStatus('🎉 咒語生效！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 咒語靈力不足，再試一次！`, true);
+                    // 分數為0或太低，提示用戶
+                    if (state.voiceScore === 0) {
+                        setStatus('🔇 未檢測到語音，請大聲朗讀咒語！', true);
+                    } else {
+                        setStatus(`😤 咒語靈力不足 (${state.voiceScore}分)，再試一次！`, true);
+                    }
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1125,6 +1146,10 @@
                 state.wsReady = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
+                if (audioWorkletNode) {
+                    try { audioWorkletNode.disconnect(); } catch (e) {}
+                    audioWorkletNode = null;
+                }
                 drawHistory = [];
                 renderOracle();
                 revealArea.classList.remove('show');
@@ -1142,18 +1167,14 @@
                 btnVoice.classList.remove('recording');
             }
 
-            // ---- 不重複抽取邏輯 ----
             function pickRandomChar() {
                 const total = CHARACTERS.length;
-                // 如果所有字都已用過，重置列表
                 if (state.usedCharIds.length >= total) {
                     state.usedCharIds = [];
                     console.log('所有字已用過，重置記錄');
                 }
-                // 找出尚未使用的字
                 const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
                 if (available.length === 0) {
-                    // 理論上不會發生，但以防萬一
                     state.usedCharIds = [];
                     return CHARACTERS[Math.floor(Math.random() * total)];
                 }
@@ -1295,7 +1316,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (去重 + 移除分數提示)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (修復分數提取 + 語音引導)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
