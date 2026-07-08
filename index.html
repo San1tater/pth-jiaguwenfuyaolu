@@ -70,9 +70,20 @@
         button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.3); }
         button:disabled { background-color: #bdc3c7; color: #7f8c8d; cursor: not-allowed; box-shadow: none; }
         
-        #recordBtn { background-color: #c0392b; }
+        #recordBtn { background-color: #c0392b; transition: all 0.3s ease; }
         #recordBtn:hover:not(:disabled) { background-color: #922b21; }
         #nextBtn { background-color: #27ae60; display: none; }
+
+        /* 錄音中閃爍動畫 */
+        .recording-pulse {
+            background-color: #e74c3c !important;
+            animation: pulse-glow 1.5s infinite;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
 
         /* 右側面板：展示區 */
         #right-panel {
@@ -125,7 +136,7 @@
         <div class="controls">
             <button id="clearBtn" onclick="clearCanvas()">清除重寫</button>
             <button id="checkBtn" onclick="checkWriting()">驗證符文</button>
-            <button id="recordBtn" onclick="startVoiceEvaluation()" disabled>🎙️ 唸咒</button>
+            <button id="recordBtn" onclick="toggleRecording()" disabled>🎙️ 唸咒</button>
             <button id="nextBtn" onclick="initGame()">尋找下個妖怪</button>
         </div>
     </div>
@@ -147,11 +158,11 @@
         const XF_API_SECRET = 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj';
 
         const dictionary = [
-            { char: '羊', pinyin: 'yáng', emoji: '🐑', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L50,80 M20,30 L80,30 M30,50 L70,50 M30,20 L50,40 L70,20 M30,70 L70,70" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '牛', pinyin: 'niú', emoji: '🐮', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,20 C40,40 60,40 80,20 M50,30 L50,90 M30,60 L70,60" stroke="%235a4634" stroke-width="5" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '鳥', pinyin: 'niǎo', emoji: '🐦', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,40 C30,20 50,20 50,20 L60,30 C80,30 90,50 90,50 C90,50 60,70 50,70 C30,70 30,50 30,40 Z M30,40 L15,45 L30,50 M60,70 L55,90 M70,65 L70,90 M45,35 A3,3 0 1,1 45.1,35" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' },
-            { char: '魚', pinyin: 'yú', emoji: '🐟', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L80,50 L50,80 L20,50 Z M20,50 L50,50 M80,20 L80,80 L65,50 Z M40,35 L45,35 M40,65 L45,65" stroke="%235a4634" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>' }
+            { char: '羊', pinyin: 'yáng', emoji: '🐑', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L50,80 M20,30 L80,30 M30,50 L70,50 M30,20 L50,40 L70,20 M30,70 L70,70" stroke="%235a4634" stroke-width=\"5\" stroke-linecap=\"round\" fill=\"none\"/></svg>' },
+            { char: '馬', pinyin: 'mǎ', emoji: '🐴', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,70 L40,30 L70,30 L80,50 M40,30 L40,80 M50,30 L50,80 M60,30 L60,80 M70,30 L70,70 M80,50 L75,85" stroke="%235a4634" stroke-width=\"5\" stroke-linecap=\"round\" fill=\"none\"/></svg>' },
+            { char: '牛', pinyin: 'niú', emoji: '🐮', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,20 C40,40 60,40 80,20 M50,30 L50,90 M30,60 L70,60" stroke="%235a4634" stroke-width=\"5\" stroke-linecap=\"round\" fill=\"none\"/></svg>' },
+            { char: '鳥', pinyin: 'niǎo', emoji: '🐦', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30,40 C30,20 50,20 50,20 L60,30 C80,30 90,50 90,50 C90,50 60,70 50,70 C30,70 30,50 30,40 Z M30,40 L15,45 L30,50 M60,70 L55,90 M70,65 L70,90 M45,35 A3,3 0 1,1 45.1,35" stroke="%235a4634" stroke-width=\"5\" stroke-linejoin=\"round\" stroke-linecap=\"round\" fill=\"none\"/></svg>' },
+            { char: '魚', pinyin: 'yú', emoji: '🐟', svg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 L80,50 L50,80 L20,50 Z M20,50 L50,50 M80,20 L80,80 L65,50 Z M40,35 L45,35 M40,65 L45,65" stroke="%235a4634" stroke-width=\"5\" stroke-linejoin=\"round\" stroke-linecap=\"round\" fill=\"none\"/></svg>' }
         ];
 
         let currentTarget = null;
@@ -168,12 +179,17 @@
             pinyinEl.style.opacity = 0; pinyinEl.innerText = currentTarget.pinyin;
             instructionEl.innerText = "請描寫下方的甲骨文字形";
             document.getElementById('checkBtn').style.display = 'inline-block';
-            document.getElementById('recordBtn').disabled = true;
+            
+            const btn = document.getElementById('recordBtn');
+            btn.disabled = true;
+            btn.innerText = "🎙️ 唸咒";
+            btn.classList.remove('recording-pulse');
+            
             document.getElementById('nextBtn').style.display = 'none';
         }
 
         // ==========================================
-        // 2. 畫布邏輯 (包含修復後的 clearCanvas)
+        // 2. 畫布邏輯
         // ==========================================
         const canvas = document.getElementById('writeCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -206,7 +222,7 @@
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.beginPath(); // 徹底切斷殘留路徑
+            ctx.beginPath();
             isTracingPassed = false; 
             pinyinEl.style.opacity = 0;
             instructionEl.innerText = "請描寫下方的甲骨文字形";
@@ -218,7 +234,7 @@
             instructionEl.innerText = "正在鑑定符文...";
             const score = await calculateTracingScore();
             if (score >= 60) {
-                isTracingPassed = true; instructionEl.innerText = "符文生效！用普通話讀出咒語，讓妖怪現形";
+                isTracingPassed = true; instructionEl.innerText = "符文生效！準備好後點擊唸咒按鈕";
                 pinyinEl.style.opacity = 1; document.getElementById('checkBtn').style.display = 'none';
                 document.getElementById('recordBtn').disabled = false;
             } else {
@@ -267,10 +283,12 @@
         }
 
         // ==========================================
-        // 3. 科大訊飛語音評測 (嚴格三階段傳輸重構版)
+        // 3. 科大訊飛語音評測 (加入手動停止邏輯與安全的 Base64 解碼)
         // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
+        let currentWs = null;
         let isRecording = false;
+        let stopTimeout = null;
 
         function getIseAuthUrl() {
             const host = "ise-api.xfyun.cn"; const path = "/v2/open-ise";
@@ -283,7 +301,6 @@
         }
 
         function getValidXunfeiText(char) {
-            // 訊飛要求帶有 UTF-8 BOM，再 Base64 轉換
             const textStr = "\uFEFF" + char;
             return window.btoa(unescape(encodeURIComponent(textStr)));
         }
@@ -321,37 +338,40 @@
             await audioContext.audioWorklet.addModule(workletUrl);
         }
 
+        // --- 手動控制邏輯 ---
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecordingAndAssess();
+            } else {
+                await startVoiceEvaluation();
+            }
+        }
+
         async function startVoiceEvaluation() {
-            if (isRecording) return;
             const btn = document.getElementById('recordBtn');
-            btn.disabled = true;
-            instructionEl.innerText = "🔴 請允許麥克風並朗讀咒語...";
+            instructionEl.innerText = "🔴 請允許麥克風...";
 
             try { mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } 
             catch (e) {
                 instructionEl.innerText = "❌ 麥克風授權失敗！";
-                btn.disabled = false; return;
+                return;
             }
 
             isRecording = true;
-            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」`;
+            // 變更按鈕樣式提示使用者可以手動關閉
+            btn.innerText = "⏹️ 停止錄音";
+            btn.classList.add('recording-pulse');
+            instructionEl.innerText = `🔴 錄音中，請大聲讀出：「${currentTarget.pinyin}」，讀完點擊停止`;
             
-            const ws = new WebSocket(getIseAuthUrl());
-            let stopTimeout;
-            let isFirstAudioFrame = true; // 追蹤第一包音訊流
+            currentWs = new WebSocket(getIseAuthUrl());
+            let isFirstAudioFrame = true;
 
-            ws.onopen = async () => {
-                // 【階段一：參數上傳 (cmd: "ssb")】
-                ws.send(JSON.stringify({
+            currentWs.onopen = async () => {
+                currentWs.send(JSON.stringify({
                     common: { app_id: XF_APPID },
                     business: { 
-                        sub: "ise",
-                        cmd: "ssb",
-                        category: "read_syllable", 
-                        ent: "cn_vip", 
-                        aue: "raw", 
-                        tte: "utf-8", 
-                        ttp_skip: true,
+                        sub: "ise", cmd: "ssb", category: "read_syllable", 
+                        ent: "cn_vip", aue: "raw", tte: "utf-8", ttp_skip: true,
                         text: getValidXunfeiText(currentTarget.char)
                     },
                     data: { status: 0, data: "" }
@@ -364,7 +384,7 @@
                 audioWorkletNode = new AudioWorkletNode(audioContext, 'ise-recorder');
                 
                 audioWorkletNode.port.onmessage = (e) => {
-                    if (ws.readyState !== WebSocket.OPEN) return;
+                    if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
                     
                     const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
                     const pcm = new Int16Array(downsampled.length);
@@ -376,63 +396,92 @@
                     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
                     const base64Audio = window.btoa(binary);
                     
-                    // 【階段二：音訊上傳 (cmd: "auw", status: 1)】
-                    ws.send(JSON.stringify({ 
-                        business: {
-                            cmd: "auw",
-                            aus: isFirstAudioFrame ? 1 : 2
-                        },
+                    currentWs.send(JSON.stringify({ 
+                        business: { cmd: "auw", aus: isFirstAudioFrame ? 1 : 2 },
                         data: { status: 1, data: base64Audio } 
                     }));
-                    
                     isFirstAudioFrame = false;
                 };
 
                 source.connect(audioWorkletNode);
                 audioWorkletNode.connect(audioContext.destination); 
-                stopTimeout = setTimeout(() => stopRecording(ws), 3000); 
+                
+                // 防呆機制：8秒後自動停止，以防使用者忘記點擊
+                stopTimeout = setTimeout(() => stopRecordingAndAssess(), 8000); 
             };
 
-            ws.onmessage = (e) => {
+            currentWs.onmessage = (e) => {
                 const res = JSON.parse(e.data);
                 if (res.code !== 0) {
-                    instructionEl.innerText = `系統錯誤：${res.code} - ${res.message}`;
-                    stopRecording(ws); return;
+                    instructionEl.innerText = `系統錯誤：${res.code}`;
+                    forceResetRecording();
+                    return;
                 }
                 if (res.data && res.data.status === 2) {
-                    parseIseResult(decodeURIComponent(escape(atob(res.data.data))));
-                    ws.close();
+                    // ★ 核心修復：使用 TextDecoder 安全解析 Base64 到 UTF-8 XML，根絕 URI malformed
+                    try {
+                        const binaryStr = window.atob(res.data.data);
+                        const bytes = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) {
+                            bytes[i] = binaryStr.charCodeAt(i);
+                        }
+                        const xmlStr = new TextDecoder("utf-8").decode(bytes);
+                        parseIseResult(xmlStr);
+                    } catch (error) {
+                        instructionEl.innerText = "資料解析錯誤，請重試";
+                        forceResetRecording();
+                    }
+                    currentWs.close();
                 }
             };
             
-            ws.onerror = () => {
+            currentWs.onerror = () => {
                 instructionEl.innerText = "連線失敗，請檢查網路或密鑰";
-                stopRecording(ws);
+                forceResetRecording();
             };
         }
 
-        function stopRecording(ws) {
+        // 手動點擊停止，或超時停止，送出結算幀
+        function stopRecordingAndAssess() {
             if (!isRecording) return;
             isRecording = false;
+
+            const btn = document.getElementById('recordBtn');
+            btn.classList.remove('recording-pulse');
+            btn.innerText = "⏳ 評分中...";
+            btn.disabled = true;
+
+            if (stopTimeout) clearTimeout(stopTimeout);
 
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
             if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
             
-            if (ws && ws.readyState === WebSocket.OPEN) { 
-                // 【階段三：最後一幀音訊 (aus: 4, status: 2)】
-                ws.send(JSON.stringify({ 
+            if (currentWs && currentWs.readyState === WebSocket.OPEN) { 
+                currentWs.send(JSON.stringify({ 
                     business: { cmd: "auw", aus: 4 },
                     data: { status: 2, data: "" } 
                 })); 
             }
-            document.getElementById('recordBtn').disabled = false;
         }
 
-        // ==========================================
-        // 4. 解析結果與顯示
-        // ==========================================
+        // 遇到錯誤時的強制復原狀態
+        function forceResetRecording() {
+            isRecording = false;
+            if (stopTimeout) clearTimeout(stopTimeout);
+            if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
+            if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
+            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+            if (currentWs) { currentWs.close(); }
+
+            const btn = document.getElementById('recordBtn');
+            btn.classList.remove('recording-pulse');
+            btn.innerText = "🎙️ 唸咒";
+            btn.disabled = false;
+        }
+
         function parseIseResult(xmlStr) {
+            const btn = document.getElementById('recordBtn');
             try {
                 const xmlDoc = new DOMParser().parseFromString(xmlStr, "text/xml");
                 const score = parseFloat(xmlDoc.getElementsByTagName("read_syllable")[0].getAttribute("total_score") || 0);
@@ -442,8 +491,15 @@
                     revealMonster();
                 } else {
                     instructionEl.innerText = `發音不夠準 (${score.toFixed(1)}分)，再來一次！`;
+                    // 復原按鈕狀態，允許重新念咒
+                    btn.innerText = "🎙️ 唸咒";
+                    btn.disabled = false;
                 }
-            } catch (err) { instructionEl.innerText = "解析評測結果失敗"; }
+            } catch (err) { 
+                instructionEl.innerText = "解析評測結果失敗"; 
+                btn.innerText = "🎙️ 唸咒";
+                btn.disabled = false;
+            }
         }
 
         function revealMonster() {
