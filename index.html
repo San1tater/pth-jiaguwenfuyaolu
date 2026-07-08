@@ -459,7 +459,7 @@
                 emoji: '🐑',
                 drawOracle: function(ctx, w, h) {
                     ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)'; // 提高亮度，确保能被判定为前景
+                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
                     ctx.lineWidth = Math.max(3, w * 0.025);
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -813,13 +813,12 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 6. 像素比對 (F1) — 修正版 ==========
+            // ========== 6. 像素比對 (F1) ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
                 const h = Math.floor(canvasH * dpr);
 
-                // 離屏1：標準甲骨文
                 const off1 = document.createElement('canvas');
                 off1.width = w;
                 off1.height = h;
@@ -829,13 +828,12 @@
                     state.currentChar.drawOracle(ctx1, canvasW, canvasH);
                 }
 
-                // 離屏2：用戶筆跡（使用亮色，確保亮度高於閾值）
                 const off2 = document.createElement('canvas');
                 off2.width = w;
                 off2.height = h;
                 const ctx2 = off2.getContext('2d');
                 ctx2.scale(dpr, dpr);
-                ctx2.strokeStyle = '#ffffff';      // 亮白色，亮度255
+                ctx2.strokeStyle = '#ffffff';
                 ctx2.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx2.lineCap = 'round';
                 ctx2.lineJoin = 'round';
@@ -849,13 +847,12 @@
                     ctx2.stroke();
                 }
 
-                // 獲取像素數據
                 const data1 = ctx1.getImageData(0, 0, w, h).data;
                 const data2 = ctx2.getImageData(0, 0, w, h).data;
 
-                const step = 2;          // 採樣步長，平衡性能
+                const step = 2;
                 let tp = 0, fp = 0, fn = 0;
-                const threshold = 30;    // 亮度閾值，大於此值視為前景
+                const threshold = 30;
 
                 for (let i = 0; i < data1.length; i += 4 * step) {
                     const idx = i / 4;
@@ -863,7 +860,6 @@
                     const y = Math.floor(idx / w);
                     if (x % step !== 0 || y % step !== 0) continue;
 
-                    // 計算亮度 (0~255)
                     const lum1 = 0.299 * data1[i] + 0.587 * data1[i+1] + 0.114 * data1[i+2];
                     const lum2 = 0.299 * data2[i] + 0.587 * data2[i+1] + 0.114 * data2[i+2];
 
@@ -875,20 +871,20 @@
                     else if (isFore1 && !isFore2) fn++;
                 }
 
-                if (tp === 0) return 0;   // 無重疊，直接返回0
+                if (tp === 0) return 0;
                 const precision = tp / (tp + fp);
                 const recall = tp / (tp + fn);
                 const f1 = 2 * precision * recall / (precision + recall);
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet 發送原始 PCM) ==========
+            // ========== 7. 語音錄製 (Worklet) ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
               super();
               this.buffer = [];
-              this.chunkSize = 640; // 40ms at 16kHz
+              this.chunkSize = 640;
             }
             process(inputs, outputs, parameters) {
               const input = inputs[0];
@@ -1029,7 +1025,7 @@
                 btnVoice.disabled = (state.phase !== 'voice');
             }
 
-            // ========== 8. WebSocket 與訊飛 API ==========
+            // ========== 8. WebSocket 與訊飛 API (修正格式) ==========
             function buildWSSUrl() {
                 const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
                 const host = new URL(WSS_URL).host;
@@ -1072,6 +1068,7 @@
                 }
             }
 
+            // 首幀：cmd=ssb, sub=ise, data=JSON字符串
             function sendInitFrame() {
                 if (!state.wsReady || !state.wsConnection) return;
                 const char = state.currentChar;
@@ -1080,7 +1077,7 @@
                 const payload = {
                     cmd: 'ssb',
                     sub: 'ise',
-                    data: {
+                    data: JSON.stringify({
                         common: { app_id: XF_CONFIG.APPID },
                         business: {
                             category: 'read_syllable',
@@ -1092,19 +1089,20 @@
                             text: text,
                         },
                         data: { status: 0, data: '' }
-                    }
+                    })
                 };
                 state.wsConnection.send(JSON.stringify(payload));
             }
 
+            // 音頻幀：cmd=auw, data=JSON字符串
             function sendAudioChunk(b64Data) {
                 if (!state.wsReady || !state.wsConnection) return;
                 const payload = {
                     cmd: 'auw',
-                    data: {
+                    data: JSON.stringify({
                         aus: state.audioBuffer.length === 0 ? 1 : 2,
                         data: b64Data
-                    }
+                    })
                 };
                 state.audioBuffer.push(b64Data);
                 try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送音訊失敗:', e); }
@@ -1112,7 +1110,10 @@
 
             function sendAudioEnd() {
                 if (!state.wsReady || !state.wsConnection) return;
-                const payload = { cmd: 'auw', data: { aus: 4, data: '' } };
+                const payload = {
+                    cmd: 'auw',
+                    data: JSON.stringify({ aus: 4, data: '' })
+                };
                 try { state.wsConnection.send(JSON.stringify(payload)); } catch (e) { console.warn('發送尾幀失敗:', e); }
             }
 
@@ -1137,6 +1138,7 @@
                         setStatus('⚠️ 語音評測錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
+                    // 結果可能在 data.data 中（Base64）
                     if (json.data && json.data.data) {
                         const xmlB64 = json.data.data;
                         const binaryStr = atob(xmlB64);
@@ -1144,6 +1146,19 @@
                         const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
                         const score = extractScoreFromXML(xml);
                         if (score !== null) handleVoiceResult(score);
+                    } else if (json.data && typeof json.data === 'string') {
+                        // 某些版本可能直接返回字符串
+                        try {
+                            const inner = JSON.parse(json.data);
+                            if (inner.data && inner.data.data) {
+                                const xmlB64 = inner.data.data;
+                                const binaryStr = atob(xmlB64);
+                                const decoder = new TextDecoder('utf-8');
+                                const xml = decoder.decode(new Uint8Array([...binaryStr].map(c => c.charCodeAt(0))));
+                                const score = extractScoreFromXML(xml);
+                                if (score !== null) handleVoiceResult(score);
+                            }
+                        } catch (e) {}
                     }
                 } catch (e) { console.warn('解析結果失敗:', e); }
             }
@@ -1317,7 +1332,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (筆跡檢測已修復)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (API格式修正)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
