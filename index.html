@@ -451,7 +451,7 @@
 <body>
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <div>🔮 召喚甲骨文靈力 ...</div>
+        <div id="loading-text">🔮 召喚甲骨文靈力 ...</div>
     </div>
 
     <div id="app">
@@ -494,273 +494,58 @@
                 APPID: '2600b137',
                 API_KEY: '8b012124ed213c06974cd469f29e134b',
                 API_SECRET: 'MWNkZTQ1ZTEzOTM0NTVjZThjOTQxNjZj',
-                WSS_URL: 'wss://ise-api.xfyun.cn/v2/open-ise', // 使用官方文档的地址
+                WSS_URL: 'wss://ise-api.xfyun.cn/v2/open-ise',
             };
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
-            const THRESHOLDS = { drawPass: 45, voicePass: 60 }; // 描红阈值降低至45
+            const THRESHOLDS = { drawPass: 45, voicePass: 60 };
 
-            // ========== 2. 字庫 (含聲調拼音，字形基於甲骨文典型寫法) ==========
+            // ========== 2. 字庫（使用圖片） ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
                 pinyinRaw: 'yang2',
                 pinyinTone: 'yáng',
                 emoji: '🐑',
-                drawOracle: function(ctx, w, h) {
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
-                    ctx.lineWidth = Math.max(3, w * 0.025);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    const cx = w / 2,
-                        cy = h / 2,
-                        s = Math.min(w, h) * 0.32;
-                    // 羊角
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.5, cy - s * 0.2);
-                    ctx.quadraticCurveTo(cx - s * 0.9, cy - s * 0.9, cx - s * 0.3, cy - s * 0.7);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.5, cy - s * 0.2);
-                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.9, cx + s * 0.3, cy - s * 0.7);
-                    ctx.stroke();
-                    // 頭部
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy - s * 0.5);
-                    ctx.lineTo(cx - s * 0.5, cy + s * 0.1);
-                    ctx.lineTo(cx + s * 0.5, cy + s * 0.1);
-                    ctx.closePath();
-                    ctx.stroke();
-                    // 身體
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy + s * 0.4, s * 0.5, s * 0.45, 0, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 腿
-                    for (let side = -1; side <= 1; side += 2)
-                        for (let leg = -1; leg <= 1; leg += 2) {
-                            ctx.beginPath();
-                            ctx.moveTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 0.7);
-                            ctx.lineTo(cx + side * s * 0.2 + leg * s * 0.15, cy + s * 1.1);
-                            ctx.stroke();
-                        }
-                    // 尾巴
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.5, cy + s * 0.4);
-                    ctx.quadraticCurveTo(cx + s * 0.9, cy + s * 0.2, cx + s * 0.8, cy + s * 0.6);
-                    ctx.stroke();
-                }
+                imgSrc: 'images/羊_1.png',
+                img: null, // 加载后填充
             }, {
                 id: 'ma',
                 char: '馬',
                 pinyinRaw: 'ma3',
                 pinyinTone: 'mǎ',
                 emoji: '🐴',
-                drawOracle: function(ctx, w, h) {
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
-                    ctx.lineWidth = Math.max(3, w * 0.025);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    const cx = w / 2,
-                        cy = h / 2,
-                        s = Math.min(w, h) * 0.32;
-                    // 頭
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.1, cy - s * 0.6);
-                    ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.5, cx - s * 0.3, cy - s * 0.1);
-                    ctx.quadraticCurveTo(cx - s * 0.2, cy + s * 0.1, cx, cy + s * 0.05);
-                    ctx.stroke();
-                    // 鬃毛
-                    for (let i = 0; i < 5; i++) {
-                        ctx.beginPath();
-                        const x = cx - s * 0.1 + i * s * 0.08;
-                        ctx.moveTo(x, cy - s * 0.55 + i * s * 0.04);
-                        ctx.quadraticCurveTo(x - s * 0.3, cy - s * 0.5 + i * s * 0.1, x - s * 0.4, cy - s * 0.3 + i * s *
-                            0.08);
-                        ctx.stroke();
-                    }
-                    // 身體
-                    ctx.beginPath();
-                    ctx.ellipse(cx + s * 0.1, cy + s * 0.2, s * 0.5, s * 0.4, 0.1, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 腿
-                    for (let side = -1; side <= 1; side += 2)
-                        for (let leg = -1; leg <= 1; leg += 2) {
-                            ctx.beginPath();
-                            ctx.moveTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.5);
-                            ctx.lineTo(cx + s * 0.1 + side * s * 0.2 + leg * s * 0.12, cy + s * 0.95);
-                            ctx.stroke();
-                        }
-                    // 尾巴
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.6, cy + s * 0.15);
-                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.1, cx + s * 0.8, cy + s * 0.4);
-                    ctx.stroke();
-                }
+                imgSrc: 'images/马_1.png',
+                img: null,
             }, {
                 id: 'niu',
                 char: '牛',
                 pinyinRaw: 'niu2',
                 pinyinTone: 'niú',
                 emoji: '🐮',
-                drawOracle: function(ctx, w, h) {
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
-                    ctx.lineWidth = Math.max(3, w * 0.025);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    const cx = w / 2,
-                        cy = h / 2,
-                        s = Math.min(w, h) * 0.32;
-                    // 牛角
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.4, cy - s * 0.5);
-                    ctx.quadraticCurveTo(cx - s * 0.9, cy - s * 0.9, cx - s * 0.5, cy - s * 0.7);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.4, cy - s * 0.5);
-                    ctx.quadraticCurveTo(cx + s * 0.9, cy - s * 0.9, cx + s * 0.5, cy - s * 0.7);
-                    ctx.stroke();
-                    // 頭部
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.5, cy - s * 0.35);
-                    ctx.lineTo(cx + s * 0.5, cy - s * 0.35);
-                    ctx.lineTo(cx + s * 0.35, cy + s * 0.05);
-                    ctx.lineTo(cx - s * 0.35, cy + s * 0.05);
-                    ctx.closePath();
-                    ctx.stroke();
-                    // 身體
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy + s * 0.35, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 腿
-                    for (let side = -1; side <= 1; side += 2)
-                        for (let leg = -1; leg <= 1; leg += 2) {
-                            ctx.beginPath();
-                            ctx.moveTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 0.65);
-                            ctx.lineTo(cx + side * s * 0.25 + leg * s * 0.12, cy + s * 1.05);
-                            ctx.stroke();
-                        }
-                    // 尾巴
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.55, cy + s * 0.3);
-                    ctx.quadraticCurveTo(cx + s * 0.85, cy + s * 0.1, cx + s * 0.75, cy + s * 0.5);
-                    ctx.stroke();
-                }
+                imgSrc: 'images/牛_1.png',
+                img: null,
             }, {
                 id: 'niao',
                 char: '鳥',
                 pinyinRaw: 'niao3',
                 pinyinTone: 'niǎo',
                 emoji: '🐦',
-                drawOracle: function(ctx, w, h) {
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
-                    ctx.lineWidth = Math.max(3, w * 0.025);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    const cx = w / 2,
-                        cy = h / 2,
-                        s = Math.min(w, h) * 0.30;
-                    // 身體
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy + s * 0.1, s * 0.45, s * 0.5, -0.1, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 頭
-                    ctx.beginPath();
-                    ctx.arc(cx + s * 0.35, cy - s * 0.25, s * 0.25, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 喙
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.55, cy - s * 0.25);
-                    ctx.lineTo(cx + s * 0.8, cy - s * 0.15);
-                    ctx.lineTo(cx + s * 0.55, cy - s * 0.05);
-                    ctx.stroke();
-                    // 翅膀
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.3, cy - s * 0.1);
-                    ctx.quadraticCurveTo(cx - s * 0.6, cy - s * 0.5, cx - s * 0.1, cy - s * 0.4);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.2, cy);
-                    ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.3, cx - s * 0.05, cy - s * 0.2);
-                    ctx.stroke();
-                    // 尾羽
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.45, cy + s * 0.25);
-                    ctx.lineTo(cx - s * 0.7, cy + s * 0.4);
-                    ctx.lineTo(cx - s * 0.5, cy + s * 0.5);
-                    ctx.stroke();
-                    // 腿
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.05, cy + s * 0.5);
-                    ctx.lineTo(cx + s * 0.05, cy + s * 0.85);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.05, cy + s * 0.5);
-                    ctx.lineTo(cx - s * 0.05, cy + s * 0.85);
-                    ctx.stroke();
-                }
+                imgSrc: 'images/鸟_1.png',
+                img: null,
             }, {
                 id: 'yu',
                 char: '魚',
                 pinyinRaw: 'yu2',
                 pinyinTone: 'yú',
                 emoji: '🐟',
-                drawOracle: function(ctx, w, h) {
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.strokeStyle = 'rgba(180,150,120,0.6)';
-                    ctx.lineWidth = Math.max(3, w * 0.025);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    const cx = w / 2,
-                        cy = h / 2,
-                        s = Math.min(w, h) * 0.30;
-                    // 魚身
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy, s * 0.6, s * 0.35, 0, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 魚頭
-                    ctx.beginPath();
-                    ctx.arc(cx + s * 0.5, cy, s * 0.2, 0, Math.PI * 2);
-                    ctx.stroke();
-                    // 眼睛
-                    ctx.beginPath();
-                    ctx.arc(cx + s * 0.55, cy - s * 0.05, s * 0.06, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(100,80,60,0.15)';
-                    ctx.fill();
-                    ctx.stroke();
-                    // 背鰭
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.2, cy - s * 0.35);
-                    ctx.quadraticCurveTo(cx, cy - s * 0.55, cx + s * 0.2, cy - s * 0.35);
-                    ctx.stroke();
-                    // 胸鰭
-                    ctx.beginPath();
-                    ctx.moveTo(cx + s * 0.3, cy + s * 0.15);
-                    ctx.quadraticCurveTo(cx + s * 0.5, cy + s * 0.35, cx + s * 0.2, cy + s * 0.3);
-                    ctx.stroke();
-                    // 魚尾
-                    ctx.beginPath();
-                    ctx.moveTo(cx - s * 0.6, cy);
-                    ctx.lineTo(cx - s * 0.85, cy - s * 0.3);
-                    ctx.lineTo(cx - s * 0.85, cy + s * 0.3);
-                    ctx.closePath();
-                    ctx.stroke();
-                    // 鱗紋
-                    for (let i = 0; i < 3; i++) {
-                        const yy = cy - s * 0.15 + i * s * 0.15;
-                        ctx.beginPath();
-                        ctx.arc(cx + s * 0.1, yy, s * 0.18, 0, Math.PI);
-                        ctx.stroke();
-                    }
-                }
+                imgSrc: 'images/鱼_1.png',
+                img: null,
             }];
 
             // ========== 3. 狀態 ==========
             const state = {
                 currentChar: null,
-                phase: 'draw', // draw | voice | reveal
+                phase: 'draw',
                 canvasLocked: false,
                 isRecording: false,
                 isVerifying: false,
@@ -773,6 +558,7 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
+                imagesLoaded: false,
             };
 
             // ========== 4. DOM ==========
@@ -791,6 +577,7 @@
             const animalEmoji = $('animal-emoji');
             const scoreBadge = $('score-badge');
             const loadingOverlay = $('loading-overlay');
+            const loadingText = $('loading-text');
 
             // ========== 5. Canvas ==========
             let canvasW, canvasH;
@@ -818,9 +605,22 @@
 
             function renderOracle() {
                 ctx.clearRect(0, 0, canvasW, canvasH);
-                if (state.currentChar) {
-                    state.currentChar.drawOracle(ctx, canvasW, canvasH);
+                // 繪製底圖（標準字形圖片）
+                const char = state.currentChar;
+                if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.25; // 半透明底圖
+                    ctx.drawImage(char.img, 0, 0, canvasW, canvasH);
+                    ctx.restore();
+                } else {
+                    // 若圖片未加載，顯示提示
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '20px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('字形圖片加載中...', canvasW / 2, canvasH / 2);
                 }
+                // 繪製用戶筆跡
                 if (drawHistory.length > 0) {
                     ctx.save();
                     ctx.strokeStyle = '#5a4a3a';
@@ -890,7 +690,7 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 6. 像素比對 (F1) ==========
+            // ========== 6. 像素比對 (F1) — 使用圖片作為標準 ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -900,26 +700,31 @@
                 off1.width = w;
                 off1.height = h;
                 const ctx1 = off1.getContext('2d');
-                ctx1.scale(dpr, dpr);
-                if (state.currentChar) {
-                    state.currentChar.drawOracle(ctx1, canvasW, canvasH);
+                // 繪製標準字形圖片
+                const char = state.currentChar;
+                if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
+                    ctx1.drawImage(char.img, 0, 0, w, h);
+                } else {
+                    // 若無圖片，回退為空白
                 }
 
                 const off2 = document.createElement('canvas');
                 off2.width = w;
                 off2.height = h;
                 const ctx2 = off2.getContext('2d');
-                ctx2.scale(dpr, dpr);
                 ctx2.strokeStyle = '#ffffff';
-                ctx2.lineWidth = Math.max(3, canvasW * 0.02);
+                ctx2.lineWidth = Math.max(3, canvasW * 0.02) * dpr;
                 ctx2.lineCap = 'round';
                 ctx2.lineJoin = 'round';
+                // 繪製用戶筆跡（放大到離屏尺寸）
                 for (const path of drawHistory) {
                     if (path.length < 2) continue;
                     ctx2.beginPath();
-                    ctx2.moveTo(path[0].x, path[0].y);
+                    const scaleX = w / canvasW;
+                    const scaleY = h / canvasH;
+                    ctx2.moveTo(path[0].x * scaleX, path[0].y * scaleY);
                     for (let i = 1; i < path.length; i++) {
-                        ctx2.lineTo(path[i].x, path[i].y);
+                        ctx2.lineTo(path[i].x * scaleX, path[i].y * scaleY);
                     }
                     ctx2.stroke();
                 }
@@ -942,8 +747,8 @@
                     const lum1 = 0.299 * data1[i] + 0.587 * data1[i + 1] + 0.114 * data1[i + 2];
                     const lum2 = 0.299 * data2[i] + 0.587 * data2[i + 1] + 0.114 * data2[i + 2];
 
-                    const isFore1 = lum1 > threshold;
-                    const isFore2 = lum2 > threshold;
+                    const isFore1 = lum1 < threshold; // 黑色文字（亮度低）為前景
+                    const isFore2 = lum2 > threshold; // 白色筆跡為前景
 
                     if (isFore1 && isFore2) tp++;
                     else if (!isFore1 && isFore2) fp++;
@@ -957,7 +762,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) ==========
+            // ========== 7. 語音錄製 (Worklet) — 不變 ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -1104,7 +909,7 @@
                 btnVoice.disabled = (state.phase !== 'voice');
             }
 
-            // ========== 8. WebSocket 與訊飛 API (符合官方文檔) ==========
+            // ========== 8. WebSocket 與訊飛 API ==========
             function buildWSSUrl() {
                 const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
                 const host = new URL(WSS_URL).host;
@@ -1147,18 +952,17 @@
                 }
             }
 
-            // 首幀：正確格式，data 為對象
             function sendInitFrame() {
                 if (!state.wsReady || !state.wsConnection) return;
                 const char = state.currentChar;
                 if (!char) return;
-                const text = '\uFEFF' + char.char + '\n' + char.pinyinRaw; // 加BOM
+                const text = '\uFEFF' + char.char + '\n' + char.pinyinRaw;
                 const payload = {
                     common: { app_id: XF_CONFIG.APPID },
                     business: {
                         sub: 'ise',
                         ent: 'cn_vip',
-                        category: 'read_syllable', // 单字
+                        category: 'read_syllable',
                         cmd: 'ssb',
                         auf: 'audio/L16;rate=16000',
                         aue: 'raw',
@@ -1172,7 +976,6 @@
                 state.wsConnection.send(JSON.stringify(payload));
             }
 
-            // 音頻幀：cmd=auw, aus 在 business 中，data 為對象
             function sendAudioChunk(b64Data) {
                 if (!state.wsReady || !state.wsConnection) return;
                 const aus = state.audioBuffer.length === 0 ? 1 : 2;
@@ -1214,7 +1017,6 @@
                         setStatus('⚠️ 語音評測錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
-                    // 結果在 data.data 中（Base64 XML）
                     if (json.data && json.data.data) {
                         const xmlB64 = json.data.data;
                         const binaryStr = atob(xmlB64);
@@ -1377,8 +1179,56 @@
                 state.wsReady = false;
             }
 
-            // ========== 13. 初始化 ==========
-            function init() {
+            // ========== 13. 圖片預加載 ==========
+            function loadImages() {
+                const promises = CHARACTERS.map(char => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            char.img = img;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            console.warn(`圖片加載失敗: ${char.imgSrc}，將使用備用線條`);
+                            // 回退：創建一個備用圖形（簡單線條）
+                            const fallbackCanvas = document.createElement('canvas');
+                            fallbackCanvas.width = 200;
+                            fallbackCanvas.height = 200;
+                            const fctx = fallbackCanvas.getContext('2d');
+                            fctx.fillStyle = '#ffffff';
+                            fctx.fillRect(0, 0, 200, 200);
+                            fctx.strokeStyle = '#000000';
+                            fctx.lineWidth = 4;
+                            // 畫一個簡單的 X 作為佔位
+                            fctx.beginPath();
+                            fctx.moveTo(20, 20);
+                            fctx.lineTo(180, 180);
+                            fctx.stroke();
+                            fctx.beginPath();
+                            fctx.moveTo(180, 20);
+                            fctx.lineTo(20, 180);
+                            fctx.stroke();
+                            const imgData = fallbackCanvas.toDataURL();
+                            const fallbackImg = new Image();
+                            fallbackImg.onload = () => {
+                                char.img = fallbackImg;
+                                resolve();
+                            };
+                            fallbackImg.src = imgData;
+                        };
+                        img.src = char.imgSrc;
+                    });
+                });
+                return Promise.all(promises);
+            }
+
+            // ========== 14. 初始化 ==========
+            async function init() {
+                loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
+                await loadImages();
+                loadingText.textContent = '🔮 靈力凝聚中 ...';
+
                 resizeCanvas();
                 bindCanvasEvents();
                 btnClear.addEventListener('click', handleClear);
@@ -1395,7 +1245,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (API格式修正，描紅門檻45%)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (使用標準字形圖片)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
