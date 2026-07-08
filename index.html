@@ -412,7 +412,7 @@
             const THRESHOLDS = { drawPass: 45 };
             const MIN_RECORD_DURATION = 1000;
 
-            // ========== 2. 字庫（增加 animalImg 图片路径） ==========
+            // ========== 2. 字庫（增加 animalImg） ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -421,7 +421,6 @@
                 imgSrc: 'images/羊_1.png',
                 animalImg: 'images/羊.png',
                 img: null,
-                animalImgLoaded: null,
             }, {
                 id: 'ma',
                 char: '馬',
@@ -430,7 +429,6 @@
                 imgSrc: 'images/馬_1.png',
                 animalImg: 'images/馬.png',
                 img: null,
-                animalImgLoaded: null,
             }, {
                 id: 'niu',
                 char: '牛',
@@ -439,7 +437,6 @@
                 imgSrc: 'images/牛_1.png',
                 animalImg: 'images/牛.png',
                 img: null,
-                animalImgLoaded: null,
             }, {
                 id: 'niao',
                 char: '鳥',
@@ -448,7 +445,6 @@
                 imgSrc: 'images/鳥_1.png',
                 animalImg: 'images/鳥.png',
                 img: null,
-                animalImgLoaded: null,
             }, {
                 id: 'yu',
                 char: '魚',
@@ -457,10 +453,36 @@
                 imgSrc: 'images/魚_1.png',
                 animalImg: 'images/魚.png',
                 img: null,
-                animalImgLoaded: null,
             }];
 
-            // ========== 3. 狀態 ==========
+            // ========== 3. 同音字映射表（繁简覆盖） ==========
+            function buildFullPinyinMap() {
+                const map = {};
+                const homophoneGroups = {
+                    'yang2': ['羊', '阳', '杨', '扬', '洋', '佯', '疡', '徉', '炀', '烊', '旸', '飏', '蛘', '阚', '陽', '楊', '揚', '洋',
+                        '暘'
+                    ],
+                    'ma3': ['马', '码', '玛', '蚂', '杩', '砝', '犸', '唛', '遤', '馬', '碼', '瑪', '螞'],
+                    'niu2': ['牛', '妞', '扭', '纽', '钮', '拗', '忸', '沤', '紐', '鈕'],
+                    'niao3': ['鸟', '袅', '嬲', '茑', '鳥', '裊'],
+                    'yu2': ['鱼', '渔', '余', '于', '娱', '愚', '隅', '俞', '逾', '渝', '瑜', '萸', '榆', '虞', '舆', '玙', '魚', '漁',
+                        '餘', '於', '娛', '愚', '隅', '俞', '逾', '渝', '瑜', '榆', '虞', '輿'
+                    ]
+                };
+                CHARACTERS.forEach(item => {
+                    const pinyin = item.pinyinRaw;
+                    const group = homophoneGroups[pinyin] || [];
+                    group.forEach(char => {
+                        map[char] = pinyin;
+                    });
+                    map[item.char] = pinyin;
+                });
+                return map;
+            }
+
+            const pinyinMap = buildFullPinyinMap();
+
+            // ========== 4. 狀態 ==========
             const state = {
                 currentChar: null,
                 phase: 'draw',
@@ -475,7 +497,6 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
-                wsConnecting: false,
                 wsConnectPromise: null,
                 usedCharIds: [],
                 recordStartTime: 0,
@@ -484,10 +505,11 @@
                 flushResolve: null,
                 isFlushing: false,
                 recognizedText: '',
-                pinyinMap: {},
+                audioPrepared: false,
+                preparingAudio: false,
             };
 
-            // ========== 4. DOM ==========
+            // ========== 5. DOM ==========
             const $ = id => document.getElementById(id);
             const canvas = $('oracleCanvas');
             const ctx = canvas.getContext('2d');
@@ -504,7 +526,7 @@
             const loadingOverlay = $('loading-overlay');
             const loadingText = $('loading-text');
 
-            // ========== 5. Canvas ==========
+            // ========== 6. Canvas ==========
             let canvasW, canvasH;
             let isDrawing = false;
             let drawHistory = [];
@@ -618,7 +640,7 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 6. 像素比對 ==========
+            // ========== 7. 像素比對 ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -686,7 +708,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) ==========
+            // ========== 8. 語音預初始化 ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -775,6 +797,66 @@
             let recordTimer = null;
             let sourceNode = null;
 
+            async function prepareAudio() {
+                if (state.audioPrepared) return;
+                if (state.preparingAudio) return;
+                state.preparingAudio = true;
+                console.log('[準備] 開始預初始化音頻...');
+
+                try {
+                    if (!audioContext) {
+                        audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
+                                .sampleRate });
+                        await audioContext.resume();
+                    }
+                    if (!mediaStream) {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({
+                            audio: {
+                                echoCancellation: false,
+                                noiseSuppression: false,
+                                autoGainControl: false,
+                                sampleRate: AUDIO_CONFIG.sampleRate,
+                            },
+                            video: false,
+                        });
+                        console.log('[準備] 麥克風權限已獲得');
+                    }
+                    if (!audioWorkletNode) {
+                        await audioContext.audioWorklet.addModule(initWorklet());
+                        sourceNode = audioContext.createMediaStreamSource(mediaStream);
+                        audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+                        audioWorkletNode.port.onmessage = (e) => {
+                            if (e.data.type === 'audio' && state.isRecording && state.wsReady) {
+                                const buffer = e.data.buffer;
+                                const bytes = new Uint8Array(buffer);
+                                let binary = '';
+                                for (let i = 0; i < bytes.length; i++) {
+                                    binary += String.fromCharCode(bytes[i]);
+                                }
+                                const b64 = btoa(binary);
+                                sendAudioChunk(b64, e.data.isFlush || false);
+                            }
+                            if (e.data.type === 'flushed') {
+                                console.log('[Worklet] flush 完成');
+                                if (state.flushResolve) {
+                                    state.flushResolve();
+                                    state.flushResolve = null;
+                                }
+                            }
+                        };
+                        sourceNode.connect(audioWorkletNode);
+                        audioWorkletNode.connect(audioContext.destination);
+                        console.log('[準備] AudioWorkletNode 創建成功');
+                    }
+                    state.audioPrepared = true;
+                    console.log('[準備] 音頻預初始化完成');
+                } catch (e) {
+                    console.warn('[準備] 音頻預初始化失敗:', e);
+                } finally {
+                    state.preparingAudio = false;
+                }
+            }
+
             // ---------- 音頻發送 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
@@ -809,47 +891,6 @@
                 }
             }
 
-            // ---------- 音頻初始化 ----------
-            async function initAudio() {
-                try {
-                    if (audioContext && audioContext.state === 'running') return true;
-                    if (!audioContext) {
-                        audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
-                                .sampleRate });
-                    }
-                    if (audioContext.state === 'suspended') await audioContext.resume();
-                    if (audioContext.state !== 'running') throw new Error('音頻上下文未就緒');
-                    return true;
-                } catch (e) {
-                    console.error('音頻初始化失敗:', e);
-                    setStatus('⚠️ 麥克風權限被拒絕，請允許後重試', true);
-                    return false;
-                }
-            }
-
-            // ---------- WebSocket 预连接（可靠版） ----------
-            function preConnectWebSocket() {
-                if (state.wsReady) {
-                    console.log('[WS] 已就緒');
-                    return Promise.resolve();
-                }
-                if (state.wsConnectPromise) {
-                    console.log('[WS] 等待已有連接');
-                    return state.wsConnectPromise;
-                }
-                console.log('[WS] 開始預連接...');
-                state.wsConnecting = true;
-                state.wsConnectPromise = connectWebSocket().then(() => {
-                    console.log('[WS] 預連接完成');
-                    state.wsConnecting = false;
-                }).catch((e) => {
-                    console.warn('[WS] 預連接失敗:', e);
-                    state.wsConnecting = false;
-                    state.wsConnectPromise = null;
-                });
-                return state.wsConnectPromise;
-            }
-
             // ---------- 開始錄音 ----------
             async function startRecording() {
                 if (isRecording) return;
@@ -857,79 +898,40 @@
                     setStatus('⚠️ 請先通過符文驗證再唸咒', true);
                     return;
                 }
-                try {
-                    // 确保 WebSocket 已连接（如果预连接未完成，则等待）
-                    if (!state.wsReady) {
-                        console.log('[WS] 等待 WebSocket 就緒...');
-                        if (state.wsConnectPromise) {
-                            await state.wsConnectPromise;
-                        } else {
-                            await connectWebSocket();
-                        }
-                        console.log('[WS] 就緒');
-                    }
 
-                    const ok = await initAudio();
-                    if (!ok) return;
-                    if (!mediaStream) {
-                        mediaStream = await navigator.mediaDevices.getUserMedia({
-                            audio: {
-                                echoCancellation: false,
-                                noiseSuppression: false,
-                                autoGainControl: false,
-                                sampleRate: AUDIO_CONFIG.sampleRate,
-                            },
-                            video: false,
-                        });
-                        console.log('✅ 麥克風取得成功');
-                    }
-                    if (!audioWorkletNode) {
-                        await audioContext.audioWorklet.addModule(initWorklet());
-                        sourceNode = audioContext.createMediaStreamSource(mediaStream);
-                        audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
-                        audioWorkletNode.port.onmessage = (e) => {
-                            if (e.data.type === 'audio' && isRecording && state.wsReady) {
-                                const buffer = e.data.buffer;
-                                const bytes = new Uint8Array(buffer);
-                                let binary = '';
-                                for (let i = 0; i < bytes.length; i++) {
-                                    binary += String.fromCharCode(bytes[i]);
-                                }
-                                const b64 = btoa(binary);
-                                sendAudioChunk(b64, e.data.isFlush || false);
-                            }
-                            if (e.data.type === 'flushed') {
-                                console.log('[Worklet] flush 完成');
-                                if (state.flushResolve) {
-                                    state.flushResolve();
-                                    state.flushResolve = null;
-                                }
-                            }
-                        };
-                        sourceNode.connect(audioWorkletNode);
-                        audioWorkletNode.connect(audioContext.destination);
-                        console.log('✅ AudioWorkletNode 創建成功');
-                    }
-
-                    isRecording = true;
-                    state.isRecording = true;
-                    state.recordStartTime = Date.now();
-                    btnVoice.textContent = '⏹️ 停止錄音';
-                    btnVoice.classList.add('recording');
-                    btnVoice.disabled = false;
-                    setStatus('🎤 請朗讀咒語（語音識別自動比對）', false);
-                    if (recordTimer) clearTimeout(recordTimer);
-                    recordTimer = setTimeout(() => {
-                        if (isRecording) stopRecording(true);
-                    }, AUDIO_CONFIG.maxRecordSeconds * 1000);
-                } catch (e) {
-                    console.error('錄音啟動失敗:', e);
-                    setStatus('⚠️ 無法存取麥克風: ' + e.message, true);
-                    resetVoiceUI();
+                if (!state.audioPrepared) {
+                    await prepareAudio();
                 }
+                if (!state.wsReady) {
+                    console.log('[WS] 等待 WebSocket 就緒...');
+                    if (state.wsConnectPromise) {
+                        await state.wsConnectPromise;
+                    } else {
+                        await connectWebSocket();
+                    }
+                    console.log('[WS] 就緒');
+                }
+
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                if (!audioWorkletNode) {
+                    await prepareAudio();
+                }
+
+                isRecording = true;
+                state.isRecording = true;
+                state.recordStartTime = Date.now();
+                btnVoice.textContent = '⏹️ 停止錄音';
+                btnVoice.classList.add('recording');
+                btnVoice.disabled = false;
+                setStatus('🎤 請朗讀咒語（語音識別自動比對）', false);
+                if (recordTimer) clearTimeout(recordTimer);
+                recordTimer = setTimeout(() => {
+                    if (isRecording) stopRecording(true);
+                }, AUDIO_CONFIG.maxRecordSeconds * 1000);
             }
 
-            // ---------- 停止錄音 ----------
             function stopRecording(auto = false) {
                 if (!isRecording) return;
                 if (state.isFinalizing) return;
@@ -1029,28 +1031,29 @@
                 state.isFlushing = false;
             }
 
-            // ========== 8. WebSocket 與語音聽寫 ==========
-            function buildWSSUrl() {
-                const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
-                const host = new URL(WSS_URL).host;
-                const date = new Date().toUTCString();
-                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/iat HTTP/1.1`;
-                const sha = CryptoJS.HmacSHA256(signatureOrigin, API_SECRET);
-                const signature = CryptoJS.enc.Base64.stringify(sha);
-                const authOrigin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
-                const auth = btoa(authOrigin);
-                const url = `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
-                console.log('[WS] 構建URL:', url);
-                return url;
+            // ---------- WebSocket 預連接 ----------
+            function preConnectWebSocket() {
+                if (state.wsReady) {
+                    console.log('[WS] 已就緒');
+                    return Promise.resolve();
+                }
+                if (state.wsConnectPromise) {
+                    console.log('[WS] 等待已有連接');
+                    return state.wsConnectPromise;
+                }
+                console.log('[WS] 開始預連接...');
+                state.wsConnectPromise = connectWebSocket().then(() => {
+                    console.log('[WS] 預連接完成');
+                }).catch((e) => {
+                    console.warn('[WS] 預連接失敗:', e);
+                    state.wsConnectPromise = null;
+                });
+                return state.wsConnectPromise;
             }
 
             async function connectWebSocket() {
-                if (state.wsReady) {
-                    console.log('[WS] 已就緒，無需重複連接');
-                    return;
-                }
+                if (state.wsReady) return;
                 if (state.wsConnection && state.wsConnection.readyState === WebSocket.CONNECTING) {
-                    // 等待现有连接完成
                     return new Promise((resolve) => {
                         const check = setInterval(() => {
                             if (state.wsReady) {
@@ -1060,7 +1063,6 @@
                         }, 100);
                     });
                 }
-                // 如果已有连接但未就绪，关闭重建
                 if (state.wsConnection) {
                     try { state.wsConnection.close(); } catch (e) {}
                     state.wsConnection = null;
@@ -1076,7 +1078,7 @@
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
-                            console.log('[WS] 連線成功，發送首幀');
+                            console.log('[WS] 連線成功');
                             sendInitFrame();
                             resolve();
                         };
@@ -1086,12 +1088,12 @@
                             reject(err);
                         };
                         state.wsConnection.onmessage = (e) => {
-                            console.log('[WS] 收到訊息，類型:', typeof e.data);
+                            console.log('[WS] 收到訊息');
                             handleWSMessage(e.data);
                         };
                         state.wsConnection.onclose = (e) => {
                             state.wsReady = false;
-                            console.log(`[WS] 連線關閉，代碼=${e.code}, 原因=${e.reason}`);
+                            console.log(`[WS] 連線關閉，代碼=${e.code}`);
                         };
                     });
                 } catch (e) {
@@ -1101,11 +1103,20 @@
                 }
             }
 
+            function buildWSSUrl() {
+                const { APPID, API_KEY, API_SECRET, WSS_URL } = XF_CONFIG;
+                const host = new URL(WSS_URL).host;
+                const date = new Date().toUTCString();
+                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/iat HTTP/1.1`;
+                const sha = CryptoJS.HmacSHA256(signatureOrigin, API_SECRET);
+                const signature = CryptoJS.enc.Base64.stringify(sha);
+                const authOrigin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
+                const auth = btoa(authOrigin);
+                return `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
+            }
+
             function sendInitFrame() {
-                if (!state.wsReady || !state.wsConnection) {
-                    console.warn('[WS] 未就緒，無法發送首幀');
-                    return;
-                }
+                if (!state.wsReady || !state.wsConnection) return;
                 const payload = {
                     common: { app_id: XF_CONFIG.APPID },
                     business: {
@@ -1117,9 +1128,7 @@
                     },
                     data: { status: 0 }
                 };
-                const json = JSON.stringify(payload);
-                console.log('[WS] 發送首幀:', json);
-                state.wsConnection.send(json);
+                state.wsConnection.send(JSON.stringify(payload));
             }
 
             function handleWSMessage(data) {
@@ -1129,14 +1138,11 @@
                         const reader = new FileReader();
                         reader.onload = () => {
                             const result = reader.result;
-                            console.log('[WS] Blob 轉文字:', result);
                             parseWSResult(result);
                         };
                         reader.readAsText(data);
                     } else {
-                        text = data;
-                        console.log('[WS] 收到文字訊息:', text);
-                        parseWSResult(text);
+                        parseWSResult(data);
                     }
                 } catch (e) {
                     console.error('[WS] 處理訊息異常:', e);
@@ -1146,7 +1152,6 @@
             function parseWSResult(text) {
                 try {
                     const json = JSON.parse(text);
-                    console.log('[WS] 解析 JSON:', json);
                     if (json.code && json.code !== 0) {
                         console.warn('[WS] 訊飛 API 錯誤:', json.message);
                         setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
@@ -1162,35 +1167,20 @@
                             }
                         }
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
-                        console.log('[WS] 識別文字(簡體):', recognized);
                         state.recognizedText = recognized;
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             handleRecognitionResult(recognized);
                         }
-                    } else {
-                        console.log('[WS] 暫無識別結果');
                     }
                 } catch (e) {
-                    console.error('[WS] 解析結果失敗:', e, '原始文本:', text);
+                    console.error('[WS] 解析結果失敗:', e);
                 }
             }
 
             // ========== 9. 同音字比對 ==========
-            function buildPinyinMap() {
-                const map = {};
-                CHARACTERS.forEach(item => {
-                    const pinyin = item.pinyinRaw;
-                    map[item.char] = pinyin;
-                    // 同音字列表（仅作参考，实际只比较拼音）
-                });
-                return map;
-            }
-
-            const pinyinMap = buildPinyinMap();
-
             function handleRecognitionResult(recognized) {
                 const targetChar = state.currentChar.char;
-                const targetPinyin = pinyinMap[targetChar];
+                const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw;
                 const recognizedPinyin = pinyinMap[recognized] || null;
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
@@ -1206,21 +1196,16 @@
                 }
             }
 
-            // ========== 10. 妖怪現形（使用图片） ==========
+            // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
                 if (!char) return;
-
                 modernChar.textContent = char.char;
-                // 加载动物图片
                 if (char.animalImg) {
                     animalImage.src = char.animalImg;
                     animalImage.style.display = 'block';
-                } else {
-                    animalImage.style.display = 'none';
                 }
-
                 revealArea.classList.add('show');
                 revealArea.style.display = 'flex';
                 placeholderArea.style.display = 'none';
@@ -1236,7 +1221,6 @@
 
             // ========== 11. 流程控制 ==========
             function resetForNewChar() {
-                // 关闭连接，但保留预连接会在验证后重新建立
                 closeWS();
                 state.wsConnectPromise = null;
                 isRecording = false;
@@ -1277,13 +1261,13 @@
                 btnVoice.disabled = true;
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
+                state.audioPrepared = false;
             }
 
             function pickRandomChar() {
                 const total = CHARACTERS.length;
                 if (state.usedCharIds.length >= total) {
                     state.usedCharIds = [];
-                    console.log('所有字已用過，重置記錄');
                 }
                 const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
                 if (available.length === 0) {
@@ -1331,7 +1315,7 @@
                         btnVoice.textContent = '🎙️ 唸咒';
                         setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
                         renderOracle();
-                        // 立即预连接 WebSocket，确保录音时已就绪
+                        prepareAudio();
                         preConnectWebSocket();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
@@ -1354,7 +1338,6 @@
                 else startRecording();
             }
 
-            // ========== 12. 輔助 ==========
             function setStatus(html, isError = false) {
                 statusText.innerHTML = html;
                 statusText.style.color = isError ? '#a94442' : '#3a2e1e';
@@ -1367,13 +1350,11 @@
                 }
                 state.wsReady = false;
                 state.wsConnectPromise = null;
-                console.log('[WS] 已關閉連接');
             }
 
-            // ========== 13. 圖片預加載 ==========
+            // ========== 12. 圖片預加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
-                    // 加载描红底图
                     return new Promise((resolve) => {
                         const img = new Image();
                         img.crossOrigin = 'anonymous';
@@ -1411,7 +1392,7 @@
                 return Promise.all(promises);
             }
 
-            // ========== 14. 初始化 ==========
+            // ========== 13. 初始化 ==========
             async function init() {
                 loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
                 await loadImages();
@@ -1433,8 +1414,8 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (圖片展示+優化WS預連線)');
-                console.log('📌 請確保 images/ 目錄下存在：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png 及 羊.png, 馬.png, 牛.png, 鳥.png, 魚.png');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (預初始化+同音字)');
+                console.log('📌 請確保 images/ 目錄下存在所有圖片');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
