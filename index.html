@@ -444,27 +444,129 @@
                 img: null,
             }];
 
-            // ========== 3. 同音字映射 ==========
+            // ========== 3. 擴展同音字映射（忽略聲調匹配） ==========
             function buildFullPinyinMap() {
-                const map = {};
-                const homophoneGroups = {
-                    'yang2': ['羊', '阳', '杨', '扬', '洋', '佯', '疡', '徉', '炀', '烊', '旸', '飏', '蛘', '阚', '陽', '楊', '揚', '洋',
-                        '暘'
-                    ],
-                    'ma3': ['马', '码', '玛', '蚂', '杩', '砝', '犸', '唛', '遤', '馬', '碼', '瑪', '螞'],
-                    'niu2': ['牛', '妞', '扭', '纽', '钮', '拗', '忸', '沤', '紐', '鈕'],
-                    'niao3': ['鸟', '袅', '嬲', '茑', '鳥', '裊'],
-                    'yu2': ['鱼', '渔', '余', '于', '娱', '愚', '隅', '俞', '逾', '渝', '瑜', '萸', '榆', '虞', '舆', '玙', '魚', '漁',
-                        '餘', '於', '娛', '愚', '隅', '俞', '逾', '渝', '瑜', '榆', '虞', '輿'
-                    ]
+                // 定義每個字對應的拼音（不含聲調，方便忽略音調）
+                const baseMap = {
+                    '羊': 'yang',
+                    '阳': 'yang',
+                    '杨': 'yang',
+                    '扬': 'yang',
+                    '洋': 'yang',
+                    '佯': 'yang',
+                    '疡': 'yang',
+                    '徉': 'yang',
+                    '炀': 'yang',
+                    '烊': 'yang',
+                    '旸': 'yang',
+                    '飏': 'yang',
+                    '蛘': 'yang',
+                    '阚': 'yang',
+                    '陽': 'yang',
+                    '楊': 'yang',
+                    '揚': 'yang',
+                    '暘': 'yang',
+                    '馬': 'ma',
+                    '马': 'ma',
+                    '码': 'ma',
+                    '玛': 'ma',
+                    '蚂': 'ma',
+                    '杩': 'ma',
+                    '砝': 'ma',
+                    '犸': 'ma',
+                    '唛': 'ma',
+                    '遤': 'ma',
+                    '碼': 'ma',
+                    '瑪': 'ma',
+                    '螞': 'ma',
+                    '牛': 'niu',
+                    '妞': 'niu',
+                    '扭': 'niu',
+                    '纽': 'niu',
+                    '钮': 'niu',
+                    '拗': 'niu',
+                    '忸': 'niu',
+                    '沤': 'niu',
+                    '紐': 'niu',
+                    '鈕': 'niu',
+                    '鳥': 'niao',
+                    '鸟': 'niao',
+                    '袅': 'niao',
+                    '嬲': 'niao',
+                    '茑': 'niao',
+                    '裊': 'niao',
+                    '魚': 'yu',
+                    '鱼': 'yu',
+                    '渔': 'yu',
+                    '余': 'yu',
+                    '于': 'yu',
+                    '娱': 'yu',
+                    '愚': 'yu',
+                    '隅': 'yu',
+                    '俞': 'yu',
+                    '逾': 'yu',
+                    '渝': 'yu',
+                    '瑜': 'yu',
+                    '萸': 'yu',
+                    '榆': 'yu',
+                    '虞': 'yu',
+                    '舆': 'yu',
+                    '玙': 'yu',
+                    '餘': 'yu',
+                    '於': 'yu',
+                    '娛': 'yu',
+                    '愚': 'yu',
+                    '隅': 'yu',
+                    '俞': 'yu',
+                    '逾': 'yu',
+                    '渝': 'yu',
+                    '瑜': 'yu',
+                    '榆': 'yu',
+                    '虞': 'yu',
+                    '輿': 'yu',
+                    // 補充更多常見同音字
+                    '与': 'yu',
+                    '屿': 'yu',
+                    '宇': 'yu',
+                    '羽': 'yu',
+                    '雨': 'yu',
+                    '语': 'yu',
+                    '玉': 'yu',
+                    '育': 'yu',
+                    '郁': 'yu',
+                    '浴': 'yu',
+                    '欲': 'yu',
+                    '裕': 'yu',
+                    '喻': 'yu',
+                    '愈': 'yu',
+                    '豫': 'yu',
+                    '预': 'yu',
+                    '遇': 'yu',
+                    '御': 'yu',
+                    '寓': 'yu',
+                    '誉': 'yu',
+                    '域': 'yu',
+                    '越': 'yu',
+                    '阅': 'yu',
+                    '跃': 'yu',
+                    '粤': 'yu',
+                    '月': 'yu',
+                    '乐': 'yu',
+                    '岳': 'yu',
+                    '钥': 'yu',
                 };
+                // 為每個目標字建立映射，同時保留原始拼音（帶聲調）用於顯示
+                const map = {};
                 CHARACTERS.forEach(item => {
-                    const pinyin = item.pinyinRaw;
-                    const group = homophoneGroups[pinyin] || [];
-                    group.forEach(char => {
-                        map[char] = pinyin;
-                    });
-                    map[item.char] = pinyin;
+                    const pinyinNoTone = item.pinyinRaw.replace(/\d/g, ''); // 去掉聲調數字
+                    // 為所有同音字設置拼音（不含聲調）
+                    for (const [key, val] of Object.entries(baseMap)) {
+                        if (val === pinyinNoTone) {
+                            map[key] = pinyinNoTone;
+                        }
+                    }
+                    // 確保目標字本身也有映射
+                    map[item.char] = pinyinNoTone;
                 });
                 return map;
             }
@@ -496,7 +598,8 @@
                 recognizedText: '',
                 audioPrepared: false,
                 preparingAudio: false,
-                resultReceived: false, // 是否已收到结果
+                resultReceived: false,
+                resultHandled: false,
             };
 
             // ========== 5. DOM ==========
@@ -808,7 +911,6 @@
                 console.log('[準備] 開始初始化音頻...');
 
                 try {
-                    // 如果已有 AudioContext 但被關閉，重新創建
                     if (!audioContext || audioContext.state === 'closed') {
                         audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
                                 .sampleRate });
@@ -817,7 +919,6 @@
                         await audioContext.resume();
                     }
 
-                    // 如果沒有媒體流，獲取麥克風
                     if (!mediaStream || mediaStream.getTracks().some(t => t.readyState === 'ended')) {
                         if (mediaStream) {
                             mediaStream.getTracks().forEach(t => t.stop());
@@ -835,7 +936,6 @@
                         console.log('[準備] 麥克風權限已獲得');
                     }
 
-                    // 如果沒有 Worklet，加載
                     if (!audioWorkletNode) {
                         await audioContext.audioWorklet.addModule(initWorklet());
                         sourceNode = audioContext.createMediaStreamSource(mediaStream);
@@ -874,7 +974,7 @@
                 }
             }
 
-            // ---------- 重置音頻節點（保留上下文和流） ----------
+            // ---------- 重置音頻節點 ----------
             function resetAudioNode() {
                 if (audioWorkletNode) {
                     try {
@@ -888,12 +988,12 @@
                         sourceNode = null;
                     } catch (e) {}
                 }
-                state.audioPrepared = false; // 标记需要重建
+                state.audioPrepared = false;
                 state.audioBuffer = [];
                 console.log('[重置] 音頻節點已斷開，等待下次重建');
             }
 
-            // ---------- 音頻發送與接收 ----------
+            // ---------- 音頻發送 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
@@ -935,7 +1035,6 @@
                     return;
                 }
 
-                // 確保音頻準備
                 if (!state.audioPrepared) {
                     await prepareAudio();
                 }
@@ -949,12 +1048,10 @@
                     console.log('[WS] 就緒');
                 }
 
-                // 如果 Worklet 已被斷開，重新創建
                 if (!audioWorkletNode) {
                     await prepareAudio();
                 }
 
-                // 確保 AudioContext 運行
                 if (audioContext && audioContext.state === 'suspended') {
                     await audioContext.resume();
                 }
@@ -962,7 +1059,8 @@
                 isRecording = true;
                 state.isRecording = true;
                 state.recordStartTime = Date.now();
-                state.resultReceived = false; // 重置結果標記
+                state.resultReceived = false;
+                state.resultHandled = false;
                 btnVoice.textContent = '⏹️ 停止錄音';
                 btnVoice.classList.add('recording');
                 btnVoice.disabled = false;
@@ -986,9 +1084,6 @@
                 btnVoice.classList.remove('recording');
                 setStatus('⏳ 語音識別中，請等候 ...', false);
 
-                // 標記正在等待結果
-                state.waitingForResult = true;
-
                 if (remaining > 0) {
                     console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
                     if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
@@ -1005,7 +1100,6 @@
                 if (state.isFlushing) return;
                 state.isFlushing = true;
 
-                // 斷開 source，停止采集
                 if (sourceNode) {
                     try {
                         sourceNode.disconnect();
@@ -1033,24 +1127,19 @@
                         }, 300);
                     });
                     flushPromise.then(() => {
-                        // 發送尾幀
                         if (state.wsReady) {
                             sendAudioEnd();
                         } else {
                             console.warn('WS未就緒，無法發送尾幀');
                         }
-                        // 清空緩衝
                         state.audioBuffer = [];
-                        // 重置狀態（但不釋放資源）
                         isRecording = false;
                         state.isRecording = false;
                         state.isFinalizing = false;
                         state.isFlushing = false;
-                        // 重置語音按鈕為唸咒
                         btnVoice.textContent = '🎙️ 唸咒';
                         btnVoice.classList.remove('recording');
                         btnVoice.disabled = (state.phase !== 'voice');
-                        // 不要設置等待結果，因為結果會通過 WebSocket 回調
                         console.log('[錄音] 尾幀已發送，等待服務器響應');
                     });
                 } else {
@@ -1204,7 +1293,6 @@
                         }
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
                         state.recognizedText = recognized;
-                        // 如果是最终结果 (status=2 或 ls=true)
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             state.resultReceived = true;
                             handleRecognitionResult(recognized);
@@ -1217,15 +1305,17 @@
                 }
             }
 
-            // ========== 9. 同音字比對 ==========
+            // ========== 9. 同音字比對（忽略聲調） ==========
             function handleRecognitionResult(recognized) {
-                // 防止重複處理
                 if (state.resultHandled) return;
                 state.resultHandled = true;
 
                 const targetChar = state.currentChar.char;
-                const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw;
+                // 獲取目標字的拼音（不含聲調）
+                const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw.replace(/\d/g, '');
+                // 獲取識別字的拼音（不含聲調）
                 const recognizedPinyin = pinyinMap[recognized] || null;
+                // 匹配：只要拼音相同即可（忽略聲調）
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
                 // 重置按鈕狀態
@@ -1239,16 +1329,14 @@
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 咒語比對失敗，請再試一次！`, true);
+                    setStatus(`😤 咒語比對失敗（識別為「${recognized}」），請再試一次！`, true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
                     closeWS();
-                    // 重置音頻節點，準備下次使用
                     resetAudioNode();
                 }
-                state.resultHandled = false; // 重置標記以允許下次
-                state.waitingForResult = false;
+                state.resultHandled = false;
             }
 
             // ========== 10. 妖怪現形 ==========
@@ -1272,7 +1360,6 @@
                 state.canvasLocked = true;
                 closeWS();
                 renderOracle();
-                // 重置音頻節點
                 resetAudioNode();
             }
 
@@ -1288,13 +1375,12 @@
                 state.phase = 'draw';
                 state.wsReady = false;
                 state.recognizedText = '';
-                state.waitingForResult = false;
+                state.resultReceived = false;
                 state.resultHandled = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
                 if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = null; }
-                // 重置音頻節點，但不釋放流
                 resetAudioNode();
                 drawHistory = [];
                 renderOracle();
@@ -1366,7 +1452,6 @@
                         btnVoice.textContent = '🎙️ 唸咒';
                         setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
                         renderOracle();
-                        // 預先準備音頻和 WebSocket
                         prepareAudio();
                         preConnectWebSocket();
                     } else {
@@ -1466,7 +1551,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (復用音頻流)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (擴展同音字+忽略聲調)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
