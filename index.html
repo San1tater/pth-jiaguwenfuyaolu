@@ -294,7 +294,7 @@
                 const jaccard = intersection / (userTotal + guideTotal - intersection);
                 console.log(`[驗證] 用戶筆跡: ${userTotal}, 底圖膨脹: ${guideTotal}, 交集: ${intersection}, Jaccard: ${(jaccard*100).toFixed(1)}%`);
 
-                if (jaccard >= 0.8) {
+                if (jaccard >= 0.3) {
                     isTracingPassed = true;
                     instructionEl.innerText = "✅ 符文生效！準備好後點擊唸咒按鈕";
                     pinyinEl.style.opacity = 1;
