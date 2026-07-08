@@ -482,7 +482,7 @@
             const AUDIO_CONFIG = { sampleRate: 16000, bitDepth: 16, channels: 1, frameDuration: 40, maxRecordSeconds: 8 };
             const THRESHOLDS = { drawPass: 45, voicePass: 60 };
 
-            // ========== 2. 字庫 ==========
+            // ========== 2. 字庫（圖片文件名使用繁體） ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
@@ -542,6 +542,9 @@
                 wsConnection: null,
                 wsReady: false,
                 usedCharIds: [],
+                // 新增：用於控制刷新
+                isFlushing: false,
+                flushResolve: null,
             };
 
             // ========== 4. DOM ==========
@@ -737,7 +740,7 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 7. 語音錄製 (Worklet) ==========
+            // ========== 7. 語音錄製 (Worklet) — 增加 flush 功能 ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -745,9 +748,48 @@
               this.buffer = [];
               this.chunkSize = 640;
               this.running = true;
+              this.flushing = false;
+              this.port.onmessage = (e) => {
+                if (e.data.type === 'flush') {
+                  this.flushing = true;
+                  // 强制刷新缓冲区
+                  this.flushBuffer();
+                }
+              };
+            }
+            flushBuffer() {
+              if (this.buffer.length === 0) {
+                this.port.postMessage({ type: 'flushed' });
+                return;
+              }
+              // 合并所有数据
+              let totalLen = 0;
+              for (const chunk of this.buffer) totalLen += chunk.length;
+              const merged = new Float32Array(totalLen);
+              let offset = 0;
+              for (const chunk of this.buffer) {
+                merged.set(chunk, offset);
+                offset += chunk.length;
+              }
+              this.buffer = [];
+              // 发送剩余数据（即使不足 chunkSize）
+              const pcm = new Int16Array(merged.length);
+              for (let i = 0; i < merged.length; i++) {
+                let s = merged[i];
+                s = Math.max(-1, Math.min(1, s));
+                pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+              }
+              this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: true }, [pcm.buffer]);
+              // 通知主线程刷新完成
+              this.port.postMessage({ type: 'flushed' });
             }
             process(inputs, outputs, parameters) {
               if (!this.running) return false;
+              // 如果正在刷新，不处理新数据（但此时应该已经停止采集）
+              if (this.flushing) {
+                // 如果还有数据未发送，继续发送（但process可能不会被调用）
+                return false;
+              }
               const input = inputs[0];
               if (!input || input.length === 0) return true;
               const channelData = input[0];
@@ -764,13 +806,18 @@
                 }
                 this.buffer = [];
                 const sendData = merged.slice(0, this.chunkSize);
+                // 剩余数据放回
+                if (merged.length > this.chunkSize) {
+                  const remaining = merged.slice(this.chunkSize);
+                  this.buffer.push(remaining);
+                }
                 const pcm = new Int16Array(sendData.length);
                 for (let i = 0; i < sendData.length; i++) {
                   let s = sendData[i];
                   s = Math.max(-1, Math.min(1, s));
                   pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
-                this.port.postMessage({ type: 'audio', buffer: pcm.buffer }, [pcm.buffer]);
+                this.port.postMessage({ type: 'audio', buffer: pcm.buffer, isFlush: false }, [pcm.buffer]);
               }
               return true;
             }
@@ -792,30 +839,16 @@
                 mediaStream = null;
             let isRecording = false;
             let recordTimer = null;
+            let sourceNode = null;
 
-            async function initAudio() {
-                try {
-                    if (audioContext && audioContext.state === 'running') return true;
-                    if (!audioContext) {
-                        audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
-                                .sampleRate });
-                    }
-                    if (audioContext.state === 'suspended') await audioContext.resume();
-                    if (audioContext.state !== 'running') throw new Error('音頻上下文未就緒');
-                    return true;
-                } catch (e) {
-                    console.error('音頻初始化失敗:', e);
-                    setStatus('⚠️ 麥克風權限被拒絕，請允許後重試', true);
-                    return false;
-                }
-            }
-
-            function sendAudioChunk(b64Data) {
+            // ---------- 音頻發送 ----------
+            function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
                     return;
                 }
-                const aus = state.audioBuffer.length === 0 ? 1 : 2;
+                // 如果是刷新帧，使用 aus=2（中间帧），但通常刷新帧是最后的，但还需要尾帧，所以这里用 aus=2
+                const aus = isFlush ? 2 : (state.audioBuffer.length === 0 ? 1 : 2);
                 const payload = {
                     business: { cmd: 'auw', aus: aus },
                     data: { status: 1, data: b64Data }
@@ -823,7 +856,7 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}`);
+                    console.log(`[WS] 發送音頻幀 aus=${aus}, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
                 } catch (e) {
                     console.error('發送音訊幀失敗:', e);
                 }
@@ -843,6 +876,25 @@
                 }
             }
 
+            // ---------- 音頻初始化 ----------
+            async function initAudio() {
+                try {
+                    if (audioContext && audioContext.state === 'running') return true;
+                    if (!audioContext) {
+                        audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
+                                .sampleRate });
+                    }
+                    if (audioContext.state === 'suspended') await audioContext.resume();
+                    if (audioContext.state !== 'running') throw new Error('音頻上下文未就緒');
+                    return true;
+                } catch (e) {
+                    console.error('音頻初始化失敗:', e);
+                    setStatus('⚠️ 麥克風權限被拒絕，請允許後重試', true);
+                    return false;
+                }
+            }
+
+            // ---------- 開始錄音 ----------
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
@@ -866,7 +918,7 @@
                     }
                     if (!audioWorkletNode) {
                         await audioContext.audioWorklet.addModule(initWorklet());
-                        const source = audioContext.createMediaStreamSource(mediaStream);
+                        sourceNode = audioContext.createMediaStreamSource(mediaStream);
                         audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
                         audioWorkletNode.port.onmessage = (e) => {
                             if (e.data.type === 'audio' && isRecording && state.wsReady) {
@@ -877,10 +929,18 @@
                                     binary += String.fromCharCode(bytes[i]);
                                 }
                                 const b64 = btoa(binary);
-                                sendAudioChunk(b64);
+                                sendAudioChunk(b64, e.data.isFlush || false);
+                            }
+                            // 处理刷新完成消息
+                            if (e.data.type === 'flushed') {
+                                console.log('[Worklet] 刷新完成');
+                                if (state.flushResolve) {
+                                    state.flushResolve();
+                                    state.flushResolve = null;
+                                }
                             }
                         };
-                        source.connect(audioWorkletNode);
+                        sourceNode.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
                         console.log('✅ AudioWorkletNode 創建成功');
                     }
@@ -905,28 +965,67 @@
                 }
             }
 
+            // ---------- 停止錄音（核心修改） ----------
             function stopRecording(auto = false) {
                 if (!isRecording) return;
+                // 标记停止录音，Worklet 将不再接收新数据
                 isRecording = false;
                 state.isRecording = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
-                if (audioWorkletNode) {
+
+                // 先断开 source，停止采集
+                if (sourceNode) {
                     try {
-                        audioWorkletNode.port.postMessage({ type: 'stop' });
-                        audioWorkletNode.disconnect();
-                        audioWorkletNode = null;
+                        sourceNode.disconnect();
+                        sourceNode = null;
                     } catch (e) {}
                 }
-                if (state.wsReady) {
-                    sendAudioEnd();
+
+                // 发送 flush 指令给 Worklet，强制刷新剩余缓冲区
+                if (audioWorkletNode) {
+                    console.log('[Worklet] 發送 flush 指令');
+                    audioWorkletNode.port.postMessage({ type: 'flush' });
+                    // 等待刷新完成
+                    const flushPromise = new Promise((resolve) => {
+                        state.flushResolve = resolve;
+                        // 设置超时，防止永远等待
+                        setTimeout(() => {
+                            console.warn('[Worklet] flush 超時，強制繼續');
+                            if (state.flushResolve) {
+                                state.flushResolve();
+                                state.flushResolve = null;
+                            }
+                        }, 300);
+                    });
+                    flushPromise.then(() => {
+                        // 刷新完成后，发送尾帧
+                        if (state.wsReady) {
+                            sendAudioEnd();
+                        } else {
+                            console.warn('WS未就緒，無法發送尾幀');
+                        }
+                        // 断开 Worklet
+                        if (audioWorkletNode) {
+                            try {
+                                audioWorkletNode.disconnect();
+                                audioWorkletNode = null;
+                            } catch (e) {}
+                        }
+                        resetVoiceUI();
+                        const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
+                        setStatus(msg, false);
+                        console.log('[錄音] 已停止，等待服務器響應');
+                    });
                 } else {
-                    console.warn('WS未就緒，無法發送尾幀');
+                    // 如果没有 Worklet，直接发送尾帧
+                    if (state.wsReady) {
+                        sendAudioEnd();
+                    }
+                    resetVoiceUI();
+                    const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
+                    setStatus(msg, false);
                 }
-                resetVoiceUI();
-                const msg = auto ? '⏳ 咒語已送出，請等候 ...' : '⏳ 等待咒語評測 ...';
-                setStatus(msg, false);
-                console.log('[錄音] 已停止，等待服務器響應');
             }
 
             function resetVoiceUI() {
@@ -1072,9 +1171,7 @@
                 }
             }
 
-            // ===== 修復分數提取：支持 total_score="..." 等多種格式 =====
             function extractScoreFromXML(xml) {
-                // 匹配 total_score="...", total_score value="...", <total_score>...</total_score>
                 let match = xml.match(/total_score[=>\s]+"([\d.]+)"/i);
                 if (match) return parseFloat(match[1]);
                 match = xml.match(/<total_score>([\d.]+)<\/total_score>/i);
@@ -1144,6 +1241,10 @@
                 if (audioWorkletNode) {
                     try { audioWorkletNode.disconnect(); } catch (e) {}
                     audioWorkletNode = null;
+                }
+                if (sourceNode) {
+                    try { sourceNode.disconnect(); } catch (e) {}
+                    sourceNode = null;
                 }
                 drawHistory = [];
                 renderOracle();
@@ -1311,7 +1412,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (完整修復分數提取)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (強制刷新緩衝區，說完即停)');
                 console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
             }
 
