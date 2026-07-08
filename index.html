@@ -223,6 +223,7 @@
         }
         .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
+        /* ===== 右側 AR 相機 ===== */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -241,6 +242,7 @@
             z-index: 1;
         }
 
+        /* 佔位區（未現形時覆蓋在相機上方） */
         #placeholder-area {
             position: absolute;
             top: 0;
@@ -267,6 +269,7 @@
             margin-bottom: 1vh;
         }
 
+        /* 妖怪現形區（覆蓋在相機最上層） */
         #reveal-area {
             display: none;
             position: absolute;
@@ -279,7 +282,7 @@
             align-items: center;
             justify-content: flex-start;
             padding: 1vh 2vw 0 2vw;
-            pointer-events: none;
+            pointer-events: none; /* 讓點擊穿透到按鈕？但按鈕在左側，無妨 */
             animation: revealAppear 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         #reveal-area.show {
@@ -301,8 +304,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
             animation: charGlow 3s ease-in-out infinite alternate;
+            width: 100%;
+            text-shadow: 0 0 60px rgba(184, 134, 11, 0.3), 0 0 120px rgba(184, 134, 11, 0.1);
         }
         @keyframes charGlow {
             0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
@@ -315,6 +319,7 @@
             height: auto;
             max-height: 100%;
             object-fit: contain;
+            /* 去白底嘗試 */
             mix-blend-mode: multiply;
             background: transparent;
             filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
@@ -325,6 +330,9 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-15px); }
         }
+
+        /* 如果圖片本身有白底，可加遮罩（但需圖片有 Alpha 通道） */
+        /* 建議用戶使用透明 PNG */
 
         #loading-overlay {
             position: fixed;
@@ -457,7 +465,7 @@
                 img: null,
             }];
 
-            // ========== 3. 同音字映射 ==========
+            // ========== 3. 同音字映射（忽略聲調） ==========
             function buildFullPinyinMap() {
                 const baseMap = {
                     '羊': 'yang',
@@ -901,9 +909,10 @@
             let recordTimer = null;
             let sourceNode = null;
 
-            // ---------- 相機 ----------
+            // ---------- 獲取相機（AR背景） ----------
             async function startCamera() {
                 if (cameraStream) {
+                    // 已有流
                     if (cameraVideo.srcObject !== cameraStream) {
                         cameraVideo.srcObject = cameraStream;
                     }
@@ -919,11 +928,12 @@
                     await cameraVideo.play();
                     console.log('[AR] 相機已啟動');
                 } catch (e) {
-                    console.warn('[AR] 相機啟動失敗', e);
+                    console.warn('[AR] 相機啟動失敗，使用靜態背景', e);
+                    // 若無相機權限，可在右側顯示漸變背景
                 }
             }
 
-            // ---------- 音頻 ----------
+            // ---------- 準備音頻 ----------
             async function prepareAudio() {
                 if (state.audioPrepared) {
                     console.log('[準備] 音頻已就緒');
@@ -1006,6 +1016,7 @@
                 }
             }
 
+            // ---------- 重置音頻節點 ----------
             function resetAudioNode() {
                 if (audioWorkletNode) {
                     try {
@@ -1024,6 +1035,7 @@
                 console.log('[重置] 音頻節點已斷開');
             }
 
+            // ---------- 發送音頻 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
@@ -1270,7 +1282,6 @@
                 return `${WSS_URL}?authorization=${auth}&date=${encodeURIComponent(date)}&host=${host}`;
             }
 
-            // ===== 核心修改：添加熱詞參數 =====
             function sendInitFrame() {
                 if (!state.wsReady || !state.wsConnection) return;
                 const payload = {
@@ -1281,10 +1292,6 @@
                         accent: 'mandarin',
                         rlang: 'zh-cn',
                         ptt: 1,
-                        // 添加熱詞列表，強制識別優先匹配這些字
-                        hotwords: '羊,马,牛,鸟,鱼',
-                        // 熱詞規則：1表示熱詞必須正確（傾向），0表示普通傾向
-                        hotword_rule: '1'
                     },
                     data: { status: 0 }
                 };
@@ -1340,29 +1347,15 @@
                 }
             }
 
-            // ========== 9. 識別結果處理 ==========
+            // ========== 9. 識別結果處理（嚴格單字限制） ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
 
-                // 如果識別結果為空，提示重新說
-                if (!recognized) {
-                    setStatus('🗣️ 未檢測到語音，請再試一次', true);
-                    state.phase = 'voice';
-                    btnVoice.disabled = false;
-                    btnVoice.textContent = '🎙️ 唸咒';
-                    btnVoice.classList.remove('recording');
-                    state.isFinalizing = false;
-                    state.isFlushing = false;
-                    closeWS();
-                    resetAudioNode();
-                    state.resultHandled = false;
-                    return;
-                }
-
-                // 如果識別出多個字，提示只念一個字（不指責用戶，僅提示結果）
+                // 嚴格檢查：如果識別結果不只一個字，視為無效
                 if (recognized.length > 1) {
-                    setStatus(`識別結果為「${recognized}」，請只朗讀一個目標字`, true);
+                    setStatus(`❌ 請只朗讀一個字（識別為「${recognized}」）`, true);
+                    // 重置語音狀態，允許重新錄音
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1390,7 +1383,7 @@
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 比對失敗（識別為「${recognized}」），請再試一次`, true);
+                    setStatus(`😤 咒語比對失敗（識別為「${recognized}」），請再試一次！`, true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1515,6 +1508,7 @@
                         renderOracle();
                         prepareAudio();
                         preConnectWebSocket();
+                        // 啟動相機（AR）
                         startCamera();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
@@ -1613,7 +1607,7 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (啟用熱詞)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (嚴格單字 + AR相機)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
