@@ -294,9 +294,10 @@
             0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
             100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
-        #animal-emoji {
-            font-size: clamp(8rem, 22vh, 16rem);
-            line-height: 1;
+        #animal-image {
+            max-width: 70%;
+            max-height: 40vh;
+            object-fit: contain;
             animation: floatAnimal 3.5s ease-in-out infinite;
             filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
         }
@@ -391,7 +392,7 @@
             </div>
             <div id="reveal-area">
                 <div id="modern-char">羊</div>
-                <div id="animal-emoji">🐑</div>
+                <img id="animal-image" src="" alt="妖怪">
             </div>
         </div>
     </div>
@@ -411,53 +412,52 @@
             const THRESHOLDS = { drawPass: 45 };
             const MIN_RECORD_DURATION = 1000;
 
-            // ========== 2. 字庫 ==========
+            // ========== 2. 字庫（增加 animalImg 图片路径） ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
                 pinyinRaw: 'yang2',
                 pinyinTone: 'yáng',
-                emoji: '🐑',
                 imgSrc: 'images/羊_1.png',
+                animalImg: 'images/羊.png',
                 img: null,
-                // 同音字（簡體）
-                homophones: ['羊', '阳', '杨', '扬', '洋', '佯', '疡', '徉', '炀', '烊', '旸', '飏', '蛘', '阚'] // 仅做参考，实际用拼音比较
+                animalImgLoaded: null,
             }, {
                 id: 'ma',
                 char: '馬',
                 pinyinRaw: 'ma3',
                 pinyinTone: 'mǎ',
-                emoji: '🐴',
                 imgSrc: 'images/馬_1.png',
+                animalImg: 'images/馬.png',
                 img: null,
-                homophones: ['马', '码', '玛', '蚂', '杩', '砝', '犸', '唛', '遤']
+                animalImgLoaded: null,
             }, {
                 id: 'niu',
                 char: '牛',
                 pinyinRaw: 'niu2',
                 pinyinTone: 'niú',
-                emoji: '🐮',
                 imgSrc: 'images/牛_1.png',
+                animalImg: 'images/牛.png',
                 img: null,
-                homophones: ['牛', '妞', '扭', '纽', '钮', '拗', '忸', '沤']
+                animalImgLoaded: null,
             }, {
                 id: 'niao',
                 char: '鳥',
                 pinyinRaw: 'niao3',
                 pinyinTone: 'niǎo',
-                emoji: '🐦',
                 imgSrc: 'images/鳥_1.png',
+                animalImg: 'images/鳥.png',
                 img: null,
-                homophones: ['鸟', '袅', '嬲', '茑']
+                animalImgLoaded: null,
             }, {
                 id: 'yu',
                 char: '魚',
                 pinyinRaw: 'yu2',
                 pinyinTone: 'yú',
-                emoji: '🐟',
                 imgSrc: 'images/魚_1.png',
+                animalImg: 'images/魚.png',
                 img: null,
-                homophones: ['鱼', '渔', '余', '于', '娱', '愚', '隅', '俞', '逾', '渝', '瑜', '萸', '榆', '虞', '舆', '玙']
+                animalImgLoaded: null,
             }];
 
             // ========== 3. 狀態 ==========
@@ -475,6 +475,8 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
+                wsConnecting: false,
+                wsConnectPromise: null,
                 usedCharIds: [],
                 recordStartTime: 0,
                 minDurationTimer: null,
@@ -482,7 +484,6 @@
                 flushResolve: null,
                 isFlushing: false,
                 recognizedText: '',
-                // 预建拼音映射表（字->拼音），包括简体+繁体
                 pinyinMap: {},
             };
 
@@ -499,7 +500,7 @@
             const revealArea = $('reveal-area');
             const placeholderArea = $('placeholder-area');
             const modernChar = $('modern-char');
-            const animalEmoji = $('animal-emoji');
+            const animalImage = $('animal-image');
             const loadingOverlay = $('loading-overlay');
             const loadingText = $('loading-text');
 
@@ -544,7 +545,6 @@
                 }
                 if (drawHistory.length > 0) {
                     ctx.save();
-                    // 如果已通过验证，字迹变金色
                     if (state.canvasLocked && state.phase === 'voice') {
                         ctx.strokeStyle = '#ffd700';
                         ctx.shadowColor = 'rgba(255,215,0,0.4)';
@@ -775,7 +775,7 @@
             let recordTimer = null;
             let sourceNode = null;
 
-            // ---------- 音頻發送（聽寫格式） ----------
+            // ---------- 音頻發送 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('WebSocket未就緒，丟棄音頻幀');
@@ -827,19 +827,27 @@
                 }
             }
 
-            // ---------- 預連接WebSocket（在驗證通過後立即執行） ----------
+            // ---------- WebSocket 预连接（可靠版） ----------
             function preConnectWebSocket() {
                 if (state.wsReady) {
-                    console.log('[WS] 已就緒，無需重複連接');
-                    return;
+                    console.log('[WS] 已就緒');
+                    return Promise.resolve();
                 }
-                if (state.wsConnection && (state.wsConnection.readyState === WebSocket.CONNECTING ||
-                        state.wsConnection.readyState === WebSocket.OPEN)) {
-                    console.log('[WS] 正在連接中...');
-                    return;
+                if (state.wsConnectPromise) {
+                    console.log('[WS] 等待已有連接');
+                    return state.wsConnectPromise;
                 }
-                console.log('[WS] 預連接 WebSocket ...');
-                connectWebSocket().catch(e => console.warn('[WS] 預連接失敗:', e));
+                console.log('[WS] 開始預連接...');
+                state.wsConnecting = true;
+                state.wsConnectPromise = connectWebSocket().then(() => {
+                    console.log('[WS] 預連接完成');
+                    state.wsConnecting = false;
+                }).catch((e) => {
+                    console.warn('[WS] 預連接失敗:', e);
+                    state.wsConnecting = false;
+                    state.wsConnectPromise = null;
+                });
+                return state.wsConnectPromise;
             }
 
             // ---------- 開始錄音 ----------
@@ -850,6 +858,17 @@
                     return;
                 }
                 try {
+                    // 确保 WebSocket 已连接（如果预连接未完成，则等待）
+                    if (!state.wsReady) {
+                        console.log('[WS] 等待 WebSocket 就緒...');
+                        if (state.wsConnectPromise) {
+                            await state.wsConnectPromise;
+                        } else {
+                            await connectWebSocket();
+                        }
+                        console.log('[WS] 就緒');
+                    }
+
                     const ok = await initAudio();
                     if (!ok) return;
                     if (!mediaStream) {
@@ -890,13 +909,6 @@
                         sourceNode.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
                         console.log('✅ AudioWorkletNode 創建成功');
-                    }
-
-                    // 确保 WebSocket 已连接
-                    if (!state.wsReady) {
-                        // 如果还未连接，尝试连接（但应该已由预连接准备好）
-                        console.log('[WS] 等待 WebSocket 就緒...');
-                        await connectWebSocket();
                     }
 
                     isRecording = true;
@@ -1037,8 +1049,8 @@
                     console.log('[WS] 已就緒，無需重複連接');
                     return;
                 }
-                // 如果已有连接且状态为连接中，等待
                 if (state.wsConnection && state.wsConnection.readyState === WebSocket.CONNECTING) {
+                    // 等待现有连接完成
                     return new Promise((resolve) => {
                         const check = setInterval(() => {
                             if (state.wsReady) {
@@ -1047,6 +1059,11 @@
                             }
                         }, 100);
                     });
+                }
+                // 如果已有连接但未就绪，关闭重建
+                if (state.wsConnection) {
+                    try { state.wsConnection.close(); } catch (e) {}
+                    state.wsConnection = null;
                 }
                 try {
                     const url = buildWSSUrl();
@@ -1084,7 +1101,6 @@
                 }
             }
 
-            // 首幀（聽寫參數）
             function sendInitFrame() {
                 if (!state.wsReady || !state.wsConnection) {
                     console.warn('[WS] 未就緒，無法發送首幀');
@@ -1096,8 +1112,8 @@
                         language: 'zh_cn',
                         domain: 'iat',
                         accent: 'mandarin',
-                        rlang: 'zh-cn', // 返回简体
-                        ptt: 1, // 标点符号
+                        rlang: 'zh-cn',
+                        ptt: 1,
                     },
                     data: { status: 0 }
                 };
@@ -1136,7 +1152,6 @@
                         setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
-                    // 提取文字（简体）
                     let recognized = '';
                     if (json.data && json.data.result && json.data.result.ws) {
                         const ws = json.data.result.ws;
@@ -1146,11 +1161,9 @@
                                 recognized += cw[0].w;
                             }
                         }
-                        // 去除空格和标点
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
                         console.log('[WS] 識別文字(簡體):', recognized);
                         state.recognizedText = recognized;
-                        // 判断是否最终结果
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             handleRecognitionResult(recognized);
                         }
@@ -1163,38 +1176,24 @@
             }
 
             // ========== 9. 同音字比對 ==========
-            // 构建拼音映射表（简繁体统一）
             function buildPinyinMap() {
                 const map = {};
-                // 为每个字添加自身及同音字
                 CHARACTERS.forEach(item => {
                     const pinyin = item.pinyinRaw;
-                    // 自身（包括繁体）
                     map[item.char] = pinyin;
-                    // 同音字（简体）
-                    if (item.homophones) {
-                        item.homophones.forEach(h => {
-                            map[h] = pinyin;
-                        });
-                    }
+                    // 同音字列表（仅作参考，实际只比较拼音）
                 });
                 return map;
             }
 
-            // 在初始加载时构建
             const pinyinMap = buildPinyinMap();
 
             function handleRecognitionResult(recognized) {
                 const targetChar = state.currentChar.char;
                 const targetPinyin = pinyinMap[targetChar];
-                // 获取识别字的拼音（如果存在映射）
                 const recognizedPinyin = pinyinMap[recognized] || null;
-
-                // 比较拼音是否相同（不考虑声调，只考虑音节？保留声调比较精确）
-                // 这里直接比较完整拼音（含数字声调）
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
-                // 不显示具体识别字，只显示成功或失败
                 if (isMatch) {
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
@@ -1207,13 +1206,21 @@
                 }
             }
 
-            // ========== 10. 妖怪現形 ==========
+            // ========== 10. 妖怪現形（使用图片） ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
                 if (!char) return;
+
                 modernChar.textContent = char.char;
-                animalEmoji.textContent = char.emoji;
+                // 加载动物图片
+                if (char.animalImg) {
+                    animalImage.src = char.animalImg;
+                    animalImage.style.display = 'block';
+                } else {
+                    animalImage.style.display = 'none';
+                }
+
                 revealArea.classList.add('show');
                 revealArea.style.display = 'flex';
                 placeholderArea.style.display = 'none';
@@ -1224,13 +1231,14 @@
                 btnClear.disabled = true;
                 state.canvasLocked = true;
                 closeWS();
-                // 重新渲染画布让字迹变金色
                 renderOracle();
             }
 
             // ========== 11. 流程控制 ==========
             function resetForNewChar() {
+                // 关闭连接，但保留预连接会在验证后重新建立
                 closeWS();
+                state.wsConnectPromise = null;
                 isRecording = false;
                 state.isRecording = false;
                 state.audioBuffer = [];
@@ -1258,6 +1266,7 @@
                 revealArea.classList.remove('show');
                 revealArea.style.display = 'none';
                 placeholderArea.style.display = 'flex';
+                animalImage.style.display = 'none';
                 pinyinDisplay.classList.remove('show');
                 pinyinDisplay.textContent = '';
                 pinyinDisplay.style.display = 'none';
@@ -1321,9 +1330,8 @@
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
                         setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
-                        // 字迹变金色
                         renderOracle();
-                        // 预先连接 WebSocket，确保录音时已就绪
+                        // 立即预连接 WebSocket，确保录音时已就绪
                         preConnectWebSocket();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
@@ -1358,22 +1366,24 @@
                     state.wsConnection = null;
                 }
                 state.wsReady = false;
+                state.wsConnectPromise = null;
                 console.log('[WS] 已關閉連接');
             }
 
             // ========== 13. 圖片預加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
+                    // 加载描红底图
                     return new Promise((resolve) => {
                         const img = new Image();
                         img.crossOrigin = 'anonymous';
                         img.onload = () => {
                             char.img = img;
-                            console.log(`✅ 圖片載入成功: ${char.imgSrc}`);
+                            console.log(`✅ 底圖載入成功: ${char.imgSrc}`);
                             resolve();
                         };
                         img.onerror = () => {
-                            console.warn(`⚠️ 圖片載入失敗: ${char.imgSrc}，使用佔位圖`);
+                            console.warn(`⚠️ 底圖載入失敗: ${char.imgSrc}，使用佔位圖`);
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
                             fallbackCanvas.height = 200;
@@ -1423,8 +1433,8 @@
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (預連接WebSocket+同音字比對)');
-                console.log('📌 請確保 images/ 目錄下存在繁體圖片：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (圖片展示+優化WS預連線)');
+                console.log('📌 請確保 images/ 目錄下存在：羊_1.png, 馬_1.png, 牛_1.png, 鳥_1.png, 魚_1.png 及 羊.png, 馬.png, 牛.png, 鳥.png, 魚.png');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
