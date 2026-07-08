@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>甲骨文伏妖錄 - 終極修復版</title>
+    <title>甲骨文伏妖錄 - 最終版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -216,7 +216,7 @@
         }
 
         // ==========================================
-        // 3. 書寫驗證 (Jaccard 相似度 ≥ 80%，检测alpha)
+        // 3. 書寫驗證 (Jaccard 相似度 ≥ 30%，检测alpha)
         // ==========================================
         async function checkWriting() {
             instructionEl.innerText = "⏳ 比對中...";
@@ -229,7 +229,6 @@
                 const userMask = new Uint8Array(350 * 350);
                 for (let i = 0; i < userPixels.length; i += 4) {
                     const r = userPixels[i], g = userPixels[i+1], b = userPixels[i+2], a = userPixels[i+3];
-                    // 只取不透明（alpha>128）且颜色较深（灰度<128）的像素
                     if (a > 128 && (0.299 * r + 0.587 * g + 0.114 * b) < 128) {
                         userMask[i/4] = 1;
                     }
@@ -294,6 +293,7 @@
                 const jaccard = intersection / (userTotal + guideTotal - intersection);
                 console.log(`[驗證] 用戶筆跡: ${userTotal}, 底圖膨脹: ${guideTotal}, 交集: ${intersection}, Jaccard: ${(jaccard*100).toFixed(1)}%`);
 
+                // 【修改点】阈值从 0.8 改为 0.3
                 if (jaccard >= 0.3) {
                     isTracingPassed = true;
                     instructionEl.innerText = "✅ 符文生效！準備好後點擊唸咒按鈕";
@@ -303,7 +303,7 @@
                     recordBtn.classList.remove('recording-pulse');
                     recordBtn.innerText = "🎙️ 唸咒";
                 } else {
-                    instructionEl.innerText = `❌ 相符度 ${(jaccard*100).toFixed(0)}%，需達80%，請重新描寫`;
+                    instructionEl.innerText = `❌ 相符度 ${(jaccard*100).toFixed(0)}%，需達30%，請重新描寫`;
                 }
             } catch (err) {
                 console.error("[驗證] 錯誤:", err);
@@ -314,14 +314,12 @@
         }
 
         // ==========================================
-        // 4. 語音評測 (移除 BOM，增强音量检测)
+        // 4. 語音評測 (移除音量检测)
         // ==========================================
         let audioContext, mediaStream, audioWorkletNode;
         let currentWs = null;
         let isRecording = false;
         let stopTimeout = null;
-        let totalVolume = 0;
-        let volumeCount = 0;
 
         function getIseAuthUrl() {
             const host = "ise-api.xfyun.cn";
@@ -401,8 +399,6 @@
             }
 
             isRecording = true;
-            totalVolume = 0;
-            volumeCount = 0;
             recordBtn.innerText = "⏹️ 停止錄音";
             recordBtn.classList.add('recording-pulse');
             recordBtn.disabled = false;
@@ -455,14 +451,11 @@
                         if (!currentWs || currentWs.readyState !== WebSocket.OPEN || !isRecording) return;
                         const downsampled = downsampleBuffer(e.data, audioContext.sampleRate, 16000);
                         audioChunkCount++;
-                        // 计算音量
-                        let sum = 0;
-                        for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
-                        const avgVol = sum / downsampled.length;
-                        totalVolume += avgVol;
-                        volumeCount++;
+                        // 仅输出日志，不进行音量检测
                         if (audioChunkCount % 50 === 0) {
-                            console.log(`[AUDIO] Chunk ${audioChunkCount}, 平均音量: ${avgVol.toFixed(4)}`);
+                            let sum = 0;
+                            for(let i=0; i<downsampled.length; i++) sum += Math.abs(downsampled[i]);
+                            console.log(`[AUDIO] Chunk ${audioChunkCount}, 平均音量: ${(sum/downsampled.length).toFixed(4)}`);
                         }
 
                         const pcm = new Int16Array(downsampled.length);
@@ -545,22 +538,7 @@
 
             if (stopTimeout) clearTimeout(stopTimeout);
 
-            // 检查平均音量，如果太低则直接提示
-            const avgVolume = volumeCount > 0 ? totalVolume / volumeCount : 0;
-            console.log(`[AUDIO] 平均音量: ${avgVolume.toFixed(4)}`);
-            if (avgVolume < 0.005) {
-                instructionEl.innerText = "🔊 音量太小，請大聲朗讀後再試！";
-                recordBtn.innerText = "🎙️ 唸咒";
-                recordBtn.disabled = false;
-                if (!isTracingPassed) recordBtn.disabled = true;
-                // 清理资源
-                if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
-                if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
-                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
-                if (currentWs) { currentWs.close(); }
-                return;
-            }
-
+            // 【移除】音量检测逻辑，直接发送尾帧
             if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
             if (audioContext && audioContext.state !== 'closed') { audioContext.close().catch(() => {}); }
             if (mediaStream) {
