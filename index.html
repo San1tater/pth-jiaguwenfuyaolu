@@ -29,6 +29,8 @@
         }
         #app {
             display: flex;
+            flex-direction: row;
+            /* 強制左右分屏 */
             width: 100vw;
             height: 100vh;
             background: #f5f0e8;
@@ -115,10 +117,9 @@
             background: rgba(255, 255, 255, 0.6);
             transition: all 0.25s ease;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 0.2vh;
+            padding: 0.3vh;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             position: relative;
             touch-action: manipulation;
@@ -139,39 +140,12 @@
             border-color: rgba(180, 150, 100, 0.1);
         }
         .thumb-item .thumb-img {
-            width: 70%;
-            height: 70%;
+            width: 80%;
+            height: 80%;
             object-fit: contain;
             display: block;
-            flex-shrink: 0;
         }
-        .thumb-item .thumb-label {
-            font-size: clamp(0.5rem, 1.1vh, 0.8rem);
-            color: #3a2e1e;
-            font-weight: 500;
-            letter-spacing: 0.04em;
-            line-height: 1.2;
-            opacity: 0.7;
-            margin-top: -0.2vh;
-        }
-        .thumb-item .thumb-check {
-            position: absolute;
-            top: -0.4vh;
-            right: -0.4vh;
-            font-size: 1.6vh;
-            color: #5cb85c;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            width: 2.2vh;
-            height: 2.2vh;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 8px rgba(92, 184, 92, 0.3);
-        }
-        .thumb-item.completed .thumb-check {
-            display: flex;
-        }
+        /* 移除標籤和完成勾 */
 
         /* ---- 狀態區 ---- */
         #status-area {
@@ -526,7 +500,7 @@
             }
         }
 
-        /* ===== 響應式微調 ===== */
+        /* ===== 強制左右分屏，移除豎屏變換 ===== */
         @media (max-width: 640px) {
             #left-panel {
                 padding: 1vh 1.2vw;
@@ -555,39 +529,7 @@
                 font-size: clamp(0.75rem, 1.5vh, 1.2rem);
             }
         }
-        @media (orientation: portrait) {
-            #app {
-                flex-direction: column;
-            }
-            #left-panel {
-                flex: 0 0 55%;
-                height: 55vh;
-                border-right: none;
-                border-bottom: 1px solid rgba(180, 150, 100, 0.2);
-                padding: 1vh 2vw;
-            }
-            #right-panel {
-                flex: 0 0 45%;
-                height: 45vh;
-            }
-            .thumb-item {
-                width: 5.6vh;
-                height: 5.6vh;
-            }
-            #thumbnail-bar {
-                min-height: 6vh;
-                gap: 1vw;
-            }
-            #controls {
-                gap: 0.4vh 1.2vw;
-            }
-            .btn {
-                min-height: 3.6vh;
-                min-width: 12vw;
-                padding: 0.3vh 1.2vw;
-                font-size: clamp(0.55rem, 1.1vh, 0.85rem);
-            }
-        }
+        /* 移除所有豎屏覆蓋，保持左右 */
     </style>
 </head>
 <body>
@@ -598,11 +540,10 @@
 
     <div id="app">
         <div id="left-panel">
-            <!-- 縮略圖欄 -->
             <div id="thumbnail-bar"></div>
 
             <div id="status-area">
-                <div id="status-text">✍️ 請選擇一個 <span class="highlight">符咒</span> 開始</div>
+                <div id="status-text">🔮 請選擇一個 <span class="highlight">符咒</span> 開始</div>
                 <div id="pinyin-display"></div>
             </div>
 
@@ -735,6 +676,7 @@
                     '紐': 'niu',
                     '鈕': 'niu',
                     // 擴展：理由 → 牛
+                    '理由': 'niu',
                     '理': 'niu',
                     '由': 'niu',
                     '鳥': 'niao',
@@ -744,6 +686,7 @@
                     '茑': 'niao',
                     '裊': 'niao',
                     // 擴展：你好 → 鳥
+                    '你好': 'niao',
                     '你': 'niao',
                     '好': 'niao',
                     '魚': 'yu',
@@ -850,9 +793,9 @@
                 preparingAudio: false,
                 resultReceived: false,
                 resultHandled: false,
-                isLocked: false, // 縮略圖鎖定
+                isLocked: false, // 缩略图锁定
                 selectedCharId: null,
-                completedIds: [], // 已完成的符咒ID
+                // 移除 completedIds
             };
 
             // ========== 5. DOM ==========
@@ -892,8 +835,9 @@
                 ctx.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                ctx.strokeStyle = '#5a4a3a';
-                ctx.shadowColor = 'rgba(100,80,60,0.1)';
+                // 默認筆跡為硃砂紅
+                ctx.strokeStyle = '#c0392b'; // 硃砂紅
+                ctx.shadowColor = 'rgba(192, 57, 43, 0.15)';
                 ctx.shadowBlur = 8;
                 renderOracle();
             }
@@ -916,12 +860,13 @@
                 if (drawHistory.length > 0) {
                     ctx.save();
                     if (state.canvasLocked && state.phase === 'voice') {
+                        // 金色效果
                         ctx.strokeStyle = '#ffd700';
                         ctx.shadowColor = 'rgba(255,215,0,0.35)';
                         ctx.shadowBlur = 20;
                     } else {
-                        ctx.strokeStyle = '#5a4a3a';
-                        ctx.shadowColor = 'rgba(100,80,60,0.12)';
+                        ctx.strokeStyle = '#c0392b'; // 硃砂紅
+                        ctx.shadowColor = 'rgba(192, 57, 43, 0.15)';
                         ctx.shadowBlur = 10;
                     }
                     ctx.lineWidth = Math.max(3, canvasW * 0.02);
@@ -1161,8 +1106,9 @@
                     cameraStream = stream;
                     cameraVideo.srcObject = stream;
                     await cameraVideo.play();
+                    console.log('[AR] 相機已啟動');
                 } catch (e) {
-                    // 靜默失敗，不顯示錯誤
+                    console.warn('[AR] 相機啟動失敗，使用靜態背景');
                 }
             }
 
@@ -1179,6 +1125,7 @@
                     });
                 }
                 state.preparingAudio = true;
+                console.log('[準備] 初始化音頻...');
                 try {
                     if (!audioContext || audioContext.state === 'closed') {
                         audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
@@ -1202,6 +1149,7 @@
                             },
                             video: false,
                         });
+                        console.log('[準備] 麥克風權限已獲得');
                     }
 
                     if (!audioWorkletNode) {
@@ -1228,11 +1176,13 @@
                         };
                         sourceNode.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
+                        console.log('[準備] AudioWorkletNode 創建成功');
                     }
 
                     state.audioPrepared = true;
+                    console.log('[準備] 音頻初始化完成');
                 } catch (e) {
-                    // 靜默失敗
+                    console.error('[準備] 音頻初始化失敗:', e);
                 } finally {
                     state.preparingAudio = false;
                 }
@@ -1249,10 +1199,14 @@
                 }
                 state.audioPrepared = false;
                 state.audioBuffer = [];
+                console.log('[重置] 音頻節點已斷開');
             }
 
             function sendAudioChunk(b64Data, isFlush = false) {
-                if (!state.wsReady || !state.wsConnection) return;
+                if (!state.wsReady || !state.wsConnection) {
+                    console.warn('WebSocket未就緒，丟棄音頻幀');
+                    return;
+                }
                 const payload = {
                     data: {
                         status: 1,
@@ -1264,7 +1218,10 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                } catch (e) {}
+                    console.log(`[WS] 發送音頻幀, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
+                } catch (e) {
+                    console.error('發送音訊幀失敗:', e);
+                }
             }
 
             function sendAudioEnd() {
@@ -1272,13 +1229,16 @@
                 const payload = { data: { status: 2 } };
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                } catch (e) {}
+                    console.log('[WS] 發送尾幀 status=2');
+                } catch (e) {
+                    console.error('發送尾幀失敗:', e);
+                }
             }
 
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
-                    setStatus('⚠️ 請先通過符文驗證', true);
+                    setStatus('⚠️ 請先通過符文驗證再唸咒', true);
                     return;
                 }
 
@@ -1286,11 +1246,13 @@
                     await prepareAudio();
                 }
                 if (!state.wsReady) {
+                    console.log('[WS] 等待 WebSocket 就緒...');
                     if (state.wsConnectPromise) {
                         await state.wsConnectPromise;
                     } else {
                         await connectWebSocket();
                     }
+                    console.log('[WS] 就緒');
                 }
 
                 if (!audioWorkletNode) {
@@ -1355,11 +1317,13 @@
                     state.minDurationTimer = null; }
 
                 if (audioWorkletNode) {
+                    console.log('[Worklet] 發送 flush 指令');
                     audioWorkletNode.port.postMessage({ type: 'flush' });
                     const flushPromise = new Promise((resolve) => {
                         state.flushResolve = resolve;
                         setTimeout(() => {
                             if (state.flushResolve) {
+                                console.warn('[Worklet] flush 超時，強制繼續');
                                 state.flushResolve();
                                 state.flushResolve = null;
                             }
@@ -1368,6 +1332,8 @@
                     flushPromise.then(() => {
                         if (state.wsReady) {
                             sendAudioEnd();
+                        } else {
+                            console.warn('WS未就緒，無法發送尾幀');
                         }
                         state.audioBuffer = [];
                         isRecording = false;
@@ -1377,6 +1343,7 @@
                         btnVoice.textContent = '🎙️ 唸咒';
                         btnVoice.classList.remove('recording');
                         btnVoice.disabled = (state.phase !== 'voice');
+                        console.log('[錄音] 尾幀已發送，等待服務器響應');
                     });
                 } else {
                     if (state.wsReady) {
@@ -1429,21 +1396,26 @@
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
+                            console.log('[WS] 連線成功');
                             sendInitFrame();
                             resolve();
                         };
                         state.wsConnection.onerror = () => {
                             clearTimeout(timeout);
+                            console.error('[WS] 錯誤');
                             reject(new Error('WS error'));
                         };
                         state.wsConnection.onmessage = (e) => {
+                            console.log('[WS] 收到訊息');
                             handleWSMessage(e.data);
                         };
                         state.wsConnection.onclose = () => {
                             state.wsReady = false;
+                            console.log('[WS] 連線關閉');
                         };
                     });
                 } catch (e) {
+                    console.error('[WS] 連線失敗:', e);
                     throw e;
                 }
             }
@@ -1489,13 +1461,16 @@
                     } else {
                         parseWSResult(data);
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error('[WS] 處理訊息異常:', e);
+                }
             }
 
             function parseWSResult(text) {
                 try {
                     const json = JSON.parse(text);
                     if (json.code && json.code !== 0) {
+                        console.warn('[WS] 訊飛 API 錯誤:', json.message);
                         return;
                     }
                     let recognized = '';
@@ -1509,37 +1484,28 @@
                         }
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
                         state.recognizedText = recognized;
+                        console.log('[識別] 原始結果:', recognized);
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             state.resultReceived = true;
                             handleRecognitionResult(recognized);
                         }
+                    } else {
+                        console.log('[WS] 暫無識別結果');
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error('[WS] 解析結果失敗:', e);
+                }
             }
 
-            // ========== 9. 識別結果處理（不顯示具體字，不顯示報錯） ==========
+            // ========== 9. 識別結果處理（不顯示具體字，不限制單字） ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
 
-                // 嚴格單字檢查
-                if (recognized.length > 1) {
-                    // 不顯示具體識別字，只提示
-                    setStatus('❌ 請只朗讀一個字', true);
-                    state.phase = 'voice';
-                    btnVoice.disabled = false;
-                    btnVoice.textContent = '🎙️ 唸咒';
-                    btnVoice.classList.remove('recording');
-                    state.isFinalizing = false;
-                    state.isFlushing = false;
-                    closeWS();
-                    resetAudioNode();
-                    state.resultHandled = false;
-                    return;
-                }
-
                 const targetChar = state.currentChar.char;
                 const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw.replace(/\d/g, '');
+
+                // 直接使用整個識別結果（去除標點）查映射表
                 const recognizedPinyin = pinyinMap[recognized] || null;
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
@@ -1585,11 +1551,7 @@
                 closeWS();
                 renderOracle();
                 resetAudioNode();
-                // 標記完成
-                if (!state.completedIds.includes(char.id)) {
-                    state.completedIds.push(char.id);
-                }
-                updateThumbnails();
+                // 移除完成標記
             }
 
             // ========== 11. 流程控制 ==========
@@ -1630,12 +1592,10 @@
                 if (!keepLock) {
                     state.isLocked = false;
                 }
-                // 更新縮略圖鎖定狀態
                 updateThumbnailLockState();
             }
 
             function loadLevel(char) {
-                // 如果已鎖定且不是退出操作，不允許切換
                 if (state.isLocked && state.phase !== 'select') {
                     return;
                 }
@@ -1651,11 +1611,8 @@
                 btnVoice.classList.remove('recording');
                 updateThumbnails();
                 updateThumbnailLockState();
-                // 啟動相機
                 startCamera();
-                // 預連接語音
                 preConnectWebSocket();
-                // 準備音頻
                 prepareAudio();
             }
 
@@ -1707,19 +1664,10 @@
                     img.loading = 'lazy';
                     div.appendChild(img);
 
-                    const label = document.createElement('span');
-                    label.className = 'thumb-label';
-                    label.textContent = char.char;
-                    div.appendChild(label);
-
-                    const check = document.createElement('span');
-                    check.className = 'thumb-check';
-                    check.textContent = '✓';
-                    div.appendChild(check);
+                    // 移除標籤和對勾
 
                     div.addEventListener('click', () => {
                         if (state.isLocked) return;
-                        // 如果點擊的是當前已經選中的，不做任何事情
                         if (state.selectedCharId === char.id && state.phase !== 'select') return;
                         loadLevel(char);
                     });
@@ -1733,13 +1681,11 @@
                 const items = thumbnailBar.querySelectorAll('.thumb-item');
                 items.forEach(item => {
                     const id = item.dataset.id;
-                    item.classList.remove('active', 'completed');
+                    item.classList.remove('active');
                     if (id === state.selectedCharId && state.phase !== 'select') {
                         item.classList.add('active');
                     }
-                    if (state.completedIds.includes(id)) {
-                        item.classList.add('completed');
-                    }
+                    // 移除完成狀態
                 });
             }
 
@@ -1786,7 +1732,6 @@
                         setStatus(`🗣️ 請唸出咒語`, false);
                         renderOracle();
                         updateThumbnailLockState();
-                        // 確保音頻和WS就緒
                         prepareAudio();
                         preConnectWebSocket();
                     } else {
@@ -1812,7 +1757,6 @@
             }
 
             function handleExit() {
-                // 重置所有狀態，回到選擇模式
                 state.isLocked = false;
                 state.phase = 'select';
                 state.canvasLocked = false;
@@ -1840,8 +1784,6 @@
                 setStatus('🔮 請選擇一個 <span class="highlight">符咒</span> 開始', false);
                 updateThumbnails();
                 updateThumbnailLockState();
-                // 停止相機？
-                // 保留相機流，但佔位區顯示
             }
 
             function setStatus(html, isError = false) {
@@ -1918,7 +1860,6 @@
                     resizeTimer = setTimeout(resizeCanvas, 200);
                 });
 
-                // 初始狀態為選擇模式
                 state.phase = 'select';
                 state.isLocked = false;
                 state.currentChar = null;
@@ -1930,23 +1871,19 @@
                 updateThumbnails();
                 updateThumbnailLockState();
 
-                // 自動選第一個？
-                // 不自動選，讓用戶點擊
-
                 setTimeout(() => loadingOverlay.classList.add('hidden'), 600);
 
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
 
-                // 預加載音頻權限（不啟動錄音）
                 try {
                     await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(stream => {
                         stream.getTracks().forEach(t => t.stop());
                     }).catch(() => {});
                 } catch (e) {}
 
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (縮略圖選擇 + 鎖定機制)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (左右分屏 · 硃砂紅筆跡 · 無單字限制)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
