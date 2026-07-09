@@ -38,17 +38,92 @@
             flex: 0 0 50%;
             height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2vh 2vw;
+            flex-direction: row;
             background: rgba(255, 250, 240, 0.85);
             backdrop-filter: blur(4px);
             border-right: 1px solid rgba(180, 150, 100, 0.2);
             position: relative;
             z-index: 2;
         }
-        #left-panel::before {
+
+        /* 符咒缩略图列表 */
+        #char-list {
+            width: 80px;
+            min-width: 80px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(200, 180, 160, 0.15);
+            border-right: 1px solid rgba(180, 150, 100, 0.15);
+            padding: 1vh 0;
+            gap: 1vh;
+            flex-shrink: 0;
+        }
+        #char-list .char-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            border: 2px solid rgba(180, 150, 100, 0.3);
+            background: rgba(255, 255, 255, 0.4);
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #3a2e1e;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            touch-action: manipulation;
+        }
+        #char-list .char-btn:active { transform: scale(0.92); }
+        #char-list .char-btn.active {
+            border-color: #b8860b;
+            background: rgba(184, 134, 11, 0.15);
+            box-shadow: 0 0 20px rgba(184, 134, 11, 0.15);
+        }
+        #char-list .char-btn.completed {
+            border-color: #5cb85c;
+            background: rgba(92, 184, 92, 0.1);
+        }
+        #char-list .char-btn.completed::after {
+            content: '✓';
+            position: absolute;
+            font-size: 0.8rem;
+            color: #5cb85c;
+            margin-left: 20px;
+            margin-top: -20px;
+        }
+        #char-list .exit-btn {
+            margin-top: auto;
+            padding: 8px 12px;
+            border: 1px solid rgba(180, 150, 100, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            color: #6b5a44;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            touch-action: manipulation;
+            width: 60px;
+            text-align: center;
+        }
+        #char-list .exit-btn:active { background: rgba(200, 180, 160, 0.3); }
+
+        /* 左侧主区域 */
+        #left-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2vh 2vw;
+            position: relative;
+            overflow: hidden;
+        }
+        #left-main::before {
             content: '';
             position: absolute;
             top: -50%;
@@ -223,7 +298,25 @@
         }
         .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
-        /* ===== 右側 AR 相機 ===== */
+        /* 选择提示 */
+        #select-hint {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            color: rgba(100, 80, 60, 0.3);
+            font-size: clamp(1.2rem, 2.5vh, 2rem);
+            letter-spacing: 0.1em;
+        }
+        #select-hint .big-icon {
+            font-size: clamp(3rem, 8vh, 6rem);
+            margin-bottom: 2vh;
+            opacity: 0.2;
+        }
+
+        /* 右側 AR 相機 */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -231,7 +324,6 @@
             overflow: hidden;
             background: #000;
         }
-
         #camera-video {
             width: 100%;
             height: 100%;
@@ -241,8 +333,6 @@
             left: 0;
             z-index: 1;
         }
-
-        /* 佔位區（未現形時覆蓋在相機上方） */
         #placeholder-area {
             position: absolute;
             top: 0;
@@ -268,8 +358,6 @@
             opacity: 0.3;
             margin-bottom: 1vh;
         }
-
-        /* 妖怪現形區（覆蓋在相機最上層） */
         #reveal-area {
             display: none;
             position: absolute;
@@ -282,7 +370,7 @@
             align-items: center;
             justify-content: flex-start;
             padding: 1vh 2vw 0 2vw;
-            pointer-events: none; /* 讓點擊穿透到按鈕？但按鈕在左側，無妨 */
+            pointer-events: none;
             animation: revealAppear 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         #reveal-area.show {
@@ -292,7 +380,6 @@
             0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
             100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
-
         #modern-char {
             font-size: clamp(3rem, 10vh, 8rem);
             font-weight: 700;
@@ -304,22 +391,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            animation: charGlow 3s ease-in-out infinite alternate;
             width: 100%;
-            text-shadow: 0 0 60px rgba(184, 134, 11, 0.3), 0 0 120px rgba(184, 134, 11, 0.1);
+            animation: charGlow 3s ease-in-out infinite alternate;
         }
         @keyframes charGlow {
             0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
             100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
-
         #animal-image {
             flex: 0 0 87.5%;
             width: 100%;
             height: auto;
             max-height: 100%;
             object-fit: contain;
-            /* 去白底嘗試 */
             mix-blend-mode: multiply;
             background: transparent;
             filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
@@ -330,9 +414,6 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-15px); }
         }
-
-        /* 如果圖片本身有白底，可加遮罩（但需圖片有 Alpha 通道） */
-        /* 建議用戶使用透明 PNG */
 
         #loading-overlay {
             position: fixed;
@@ -378,18 +459,40 @@
 
     <div id="app">
         <div id="left-panel">
-            <div id="status-area">
-                <div id="status-text">✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span></div>
-                <div id="pinyin-display"></div>
+            <!-- 符咒列表 -->
+            <div id="char-list">
+                <div class="char-btn" data-char="羊">羊</div>
+                <div class="char-btn" data-char="馬">馬</div>
+                <div class="char-btn" data-char="牛">牛</div>
+                <div class="char-btn" data-char="鳥">鳥</div>
+                <div class="char-btn" data-char="魚">魚</div>
+                <div class="exit-btn" id="exitBtn">退出</div>
             </div>
-            <div id="canvas-wrapper">
-                <canvas id="oracleCanvas"></canvas>
-            </div>
-            <div id="controls">
-                <button class="btn btn-clear" id="btnClear">🗑 清除</button>
-                <button class="btn btn-primary" id="btnVerify">⚡ 驗證符文</button>
-                <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
-                <button class="btn btn-success" id="btnNext" style="display:none;">🔮 尋找下個妖怪</button>
+
+            <!-- 左侧主区域 -->
+            <div id="left-main">
+                <!-- 选择界面（默认显示） -->
+                <div id="select-hint">
+                    <div class="big-icon">🔮</div>
+                    <div>請選擇一個符咒</div>
+                    <div style="font-size:0.6em; opacity:0.5; margin-top:1vh;">點擊左側目標字開始</div>
+                </div>
+
+                <!-- 游戏界面（初始隐藏） -->
+                <div id="game-area" style="display:none; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <div id="status-area">
+                        <div id="status-text">✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span></div>
+                        <div id="pinyin-display"></div>
+                    </div>
+                    <div id="canvas-wrapper">
+                        <canvas id="oracleCanvas"></canvas>
+                    </div>
+                    <div id="controls">
+                        <button class="btn btn-clear" id="btnClear">🗑 清除</button>
+                        <button class="btn btn-primary" id="btnVerify">⚡ 驗證符文</button>
+                        <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -468,111 +571,31 @@
             // ========== 3. 同音字映射（忽略聲調） ==========
             function buildFullPinyinMap() {
                 const baseMap = {
-                    '羊': 'yang',
-                    '阳': 'yang',
-                    '杨': 'yang',
-                    '扬': 'yang',
-                    '洋': 'yang',
-                    '佯': 'yang',
-                    '疡': 'yang',
-                    '徉': 'yang',
-                    '炀': 'yang',
-                    '烊': 'yang',
-                    '旸': 'yang',
-                    '飏': 'yang',
-                    '蛘': 'yang',
-                    '阚': 'yang',
-                    '陽': 'yang',
-                    '楊': 'yang',
-                    '揚': 'yang',
-                    '暘': 'yang',
-                    '馬': 'ma',
-                    '马': 'ma',
-                    '码': 'ma',
-                    '玛': 'ma',
-                    '蚂': 'ma',
-                    '杩': 'ma',
-                    '砝': 'ma',
-                    '犸': 'ma',
-                    '唛': 'ma',
-                    '遤': 'ma',
-                    '碼': 'ma',
-                    '瑪': 'ma',
-                    '螞': 'ma',
-                    '牛': 'niu',
-                    '妞': 'niu',
-                    '扭': 'niu',
-                    '纽': 'niu',
-                    '钮': 'niu',
-                    '拗': 'niu',
-                    '忸': 'niu',
-                    '沤': 'niu',
-                    '紐': 'niu',
-                    '鈕': 'niu',
-                    '鳥': 'niao',
-                    '鸟': 'niao',
-                    '袅': 'niao',
-                    '嬲': 'niao',
-                    '茑': 'niao',
+                    '羊': 'yang', '阳': 'yang', '杨': 'yang', '扬': 'yang', '洋': 'yang',
+                    '佯': 'yang', '疡': 'yang', '徉': 'yang', '炀': 'yang', '烊': 'yang',
+                    '旸': 'yang', '飏': 'yang', '蛘': 'yang', '阚': 'yang',
+                    '陽': 'yang', '楊': 'yang', '揚': 'yang', '暘': 'yang',
+                    '馬': 'ma', '马': 'ma', '码': 'ma', '玛': 'ma', '蚂': 'ma',
+                    '杩': 'ma', '砝': 'ma', '犸': 'ma', '唛': 'ma', '遤': 'ma',
+                    '碼': 'ma', '瑪': 'ma', '螞': 'ma',
+                    '牛': 'niu', '妞': 'niu', '扭': 'niu', '纽': 'niu', '钮': 'niu',
+                    '拗': 'niu', '忸': 'niu', '沤': 'niu', '紐': 'niu', '鈕': 'niu',
+                    '鳥': 'niao', '鸟': 'niao', '袅': 'niao', '嬲': 'niao', '茑': 'niao',
                     '裊': 'niao',
-                    '魚': 'yu',
-                    '鱼': 'yu',
-                    '渔': 'yu',
-                    '余': 'yu',
-                    '于': 'yu',
-                    '娱': 'yu',
-                    '愚': 'yu',
-                    '隅': 'yu',
-                    '俞': 'yu',
-                    '逾': 'yu',
-                    '渝': 'yu',
-                    '瑜': 'yu',
-                    '萸': 'yu',
-                    '榆': 'yu',
-                    '虞': 'yu',
-                    '舆': 'yu',
-                    '玙': 'yu',
-                    '餘': 'yu',
-                    '於': 'yu',
-                    '娛': 'yu',
-                    '愚': 'yu',
-                    '隅': 'yu',
-                    '俞': 'yu',
-                    '逾': 'yu',
-                    '渝': 'yu',
-                    '瑜': 'yu',
-                    '榆': 'yu',
-                    '虞': 'yu',
-                    '輿': 'yu',
-                    '与': 'yu',
-                    '屿': 'yu',
-                    '宇': 'yu',
-                    '羽': 'yu',
-                    '雨': 'yu',
-                    '语': 'yu',
-                    '玉': 'yu',
-                    '育': 'yu',
-                    '郁': 'yu',
-                    '浴': 'yu',
-                    '欲': 'yu',
-                    '裕': 'yu',
-                    '喻': 'yu',
-                    '愈': 'yu',
-                    '豫': 'yu',
-                    '预': 'yu',
-                    '遇': 'yu',
-                    '御': 'yu',
-                    '寓': 'yu',
-                    '誉': 'yu',
-                    '域': 'yu',
-                    '越': 'yu',
-                    '阅': 'yu',
-                    '跃': 'yu',
-                    '粤': 'yu',
-                    '月': 'yu',
-                    '乐': 'yu',
-                    '岳': 'yu',
-                    '钥': 'yu',
+                    '魚': 'yu', '鱼': 'yu', '渔': 'yu', '余': 'yu', '于': 'yu',
+                    '娱': 'yu', '愚': 'yu', '隅': 'yu', '俞': 'yu', '逾': 'yu',
+                    '渝': 'yu', '瑜': 'yu', '萸': 'yu', '榆': 'yu', '虞': 'yu',
+                    '舆': 'yu', '玙': 'yu', '餘': 'yu', '於': 'yu', '娛': 'yu',
+                    '愚': 'yu', '隅': 'yu', '俞': 'yu', '逾': 'yu', '渝': 'yu',
+                    '瑜': 'yu', '榆': 'yu', '虞': 'yu', '輿': 'yu',
+                    '与': 'yu', '屿': 'yu', '宇': 'yu', '羽': 'yu', '雨': 'yu',
+                    '语': 'yu', '玉': 'yu', '育': 'yu', '郁': 'yu', '浴': 'yu',
+                    '欲': 'yu', '裕': 'yu', '喻': 'yu', '愈': 'yu', '豫': 'yu',
+                    '预': 'yu', '遇': 'yu', '御': 'yu', '寓': 'yu', '誉': 'yu',
+                    '域': 'yu', '越': 'yu', '阅': 'yu', '跃': 'yu', '粤': 'yu',
+                    '月': 'yu', '乐': 'yu', '岳': 'yu', '钥': 'yu',
+                    // 额外容错
+                    '與': 'yu',
                 };
                 const map = {};
                 CHARACTERS.forEach(item => {
@@ -589,10 +612,18 @@
 
             const pinyinMap = buildFullPinyinMap();
 
+            // 特殊多字映射（转写误差修正）
+            const specialMapping = {
+                '理由': '牛',
+                '你好': '鸟',
+                '與': '鱼',
+                '与': '鱼',
+            };
+
             // ========== 4. 狀態 ==========
             const state = {
                 currentChar: null,
-                phase: 'draw',
+                phase: 'select', // 'select' | 'draw' | 'voice' | 'reveal'
                 canvasLocked: false,
                 isRecording: false,
                 isVerifying: false,
@@ -606,7 +637,7 @@
                 wsConnection: null,
                 wsReady: false,
                 wsConnectPromise: null,
-                usedCharIds: [],
+                usedCharIds: [], // 此處不再使用，改為列表完成標記
                 recordStartTime: 0,
                 minDurationTimer: null,
                 isFinalizing: false,
@@ -617,6 +648,7 @@
                 preparingAudio: false,
                 resultReceived: false,
                 resultHandled: false,
+                completedChars: [], // 已完成關卡的字
             };
 
             // ========== 5. DOM ==========
@@ -628,7 +660,6 @@
             const btnClear = $('btnClear');
             const btnVerify = $('btnVerify');
             const btnVoice = $('btnVoice');
-            const btnNext = $('btnNext');
             const revealArea = $('reveal-area');
             const placeholderArea = $('placeholder-area');
             const modernChar = $('modern-char');
@@ -636,6 +667,10 @@
             const cameraVideo = $('camera-video');
             const loadingOverlay = $('loading-overlay');
             const loadingText = $('loading-text');
+            const selectHint = $('select-hint');
+            const gameArea = $('game-area');
+            const charBtns = document.querySelectorAll('.char-btn');
+            const exitBtn = $('exitBtn');
 
             // ========== 6. Canvas ==========
             let canvasW, canvasH;
@@ -709,7 +744,7 @@
             }
 
             function startDraw(e) {
-                if (state.canvasLocked || state.phase === 'reveal') return;
+                if (state.canvasLocked || state.phase === 'reveal' || state.phase === 'select') return;
                 e.preventDefault();
                 isDrawing = true;
                 const pos = getPos(e);
@@ -717,7 +752,7 @@
             }
 
             function moveDraw(e) {
-                if (!isDrawing || state.canvasLocked) return;
+                if (!isDrawing || state.canvasLocked || state.phase === 'select') return;
                 e.preventDefault();
                 const pos = getPos(e);
                 const currentPath = drawHistory[drawHistory.length - 1];
@@ -909,10 +944,9 @@
             let recordTimer = null;
             let sourceNode = null;
 
-            // ---------- 獲取相機（AR背景） ----------
+            // ---------- 相機 ----------
             async function startCamera() {
                 if (cameraStream) {
-                    // 已有流
                     if (cameraVideo.srcObject !== cameraStream) {
                         cameraVideo.srcObject = cameraStream;
                     }
@@ -926,19 +960,12 @@
                     cameraStream = stream;
                     cameraVideo.srcObject = stream;
                     await cameraVideo.play();
-                    console.log('[AR] 相機已啟動');
-                } catch (e) {
-                    console.warn('[AR] 相機啟動失敗，使用靜態背景', e);
-                    // 若無相機權限，可在右側顯示漸變背景
-                }
+                } catch (e) {}
             }
 
-            // ---------- 準備音頻 ----------
+            // ---------- 音頻 ----------
             async function prepareAudio() {
-                if (state.audioPrepared) {
-                    console.log('[準備] 音頻已就緒');
-                    return;
-                }
+                if (state.audioPrepared) return;
                 if (state.preparingAudio) {
                     return new Promise((resolve) => {
                         const check = setInterval(() => {
@@ -950,7 +977,6 @@
                     });
                 }
                 state.preparingAudio = true;
-                console.log('[準備] 初始化音頻...');
 
                 try {
                     if (!audioContext || audioContext.state === 'closed') {
@@ -975,7 +1001,6 @@
                             },
                             video: false,
                         });
-                        console.log('[準備] 麥克風權限已獲得');
                     }
 
                     if (!audioWorkletNode) {
@@ -994,7 +1019,6 @@
                                 sendAudioChunk(b64, e.data.isFlush || false);
                             }
                             if (e.data.type === 'flushed') {
-                                console.log('[Worklet] flush 完成');
                                 if (state.flushResolve) {
                                     state.flushResolve();
                                     state.flushResolve = null;
@@ -1003,20 +1027,16 @@
                         };
                         sourceNode.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
-                        console.log('[準備] AudioWorkletNode 創建成功');
                     }
 
                     state.audioPrepared = true;
-                    console.log('[準備] 音頻初始化完成');
                 } catch (e) {
-                    console.error('[準備] 音頻初始化失敗:', e);
-                    setStatus('⚠️ 麥克風初始化失敗: ' + e.message, true);
+                    setStatus('⚠️ 麥克風初始化失敗，請檢查權限', true);
                 } finally {
                     state.preparingAudio = false;
                 }
             }
 
-            // ---------- 重置音頻節點 ----------
             function resetAudioNode() {
                 if (audioWorkletNode) {
                     try {
@@ -1032,15 +1052,10 @@
                 }
                 state.audioPrepared = false;
                 state.audioBuffer = [];
-                console.log('[重置] 音頻節點已斷開');
             }
 
-            // ---------- 發送音頻 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
-                if (!state.wsReady || !state.wsConnection) {
-                    console.warn('WebSocket未就緒，丟棄音頻幀');
-                    return;
-                }
+                if (!state.wsReady || !state.wsConnection) return;
                 const payload = {
                     data: {
                         status: 1,
@@ -1052,10 +1067,7 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
-                } catch (e) {
-                    console.error('發送音訊幀失敗:', e);
-                }
+                } catch (e) {}
             }
 
             function sendAudioEnd() {
@@ -1063,10 +1075,7 @@
                 const payload = { data: { status: 2 } };
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log('[WS] 發送尾幀 status=2');
-                } catch (e) {
-                    console.error('發送尾幀失敗:', e);
-                }
+                } catch (e) {}
             }
 
             // ---------- 錄音控制 ----------
@@ -1081,13 +1090,11 @@
                     await prepareAudio();
                 }
                 if (!state.wsReady) {
-                    console.log('[WS] 等待 WebSocket 就緒...');
                     if (state.wsConnectPromise) {
                         await state.wsConnectPromise;
                     } else {
                         await connectWebSocket();
                     }
-                    console.log('[WS] 就緒');
                 }
 
                 if (!audioWorkletNode) {
@@ -1106,7 +1113,7 @@
                 btnVoice.textContent = '⏹️ 停止錄音';
                 btnVoice.classList.add('recording');
                 btnVoice.disabled = false;
-                setStatus('🎤 請朗讀咒語（語音識別自動比對）', false);
+                setStatus('🎤 請朗讀咒語', false);
                 if (recordTimer) clearTimeout(recordTimer);
                 recordTimer = setTimeout(() => {
                     if (isRecording) stopRecording(true);
@@ -1127,7 +1134,6 @@
                 setStatus('⏳ 語音識別中，請等候 ...', false);
 
                 if (remaining > 0) {
-                    console.log(`[錄音] 時長 ${elapsed}ms，不足 ${MIN_RECORD_DURATION}ms，延遲 ${remaining}ms 後停止`);
                     if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = setTimeout(() => {
                         state.minDurationTimer = null;
@@ -1146,7 +1152,6 @@
                     try {
                         sourceNode.disconnect();
                         sourceNode = null;
-                        console.log('[錄音] sourceNode 已斷開');
                     } catch (e) {}
                 }
 
@@ -1156,13 +1161,11 @@
                     state.minDurationTimer = null; }
 
                 if (audioWorkletNode) {
-                    console.log('[Worklet] 發送 flush 指令');
                     audioWorkletNode.port.postMessage({ type: 'flush' });
                     const flushPromise = new Promise((resolve) => {
                         state.flushResolve = resolve;
                         setTimeout(() => {
                             if (state.flushResolve) {
-                                console.warn('[Worklet] flush 超時，強制繼續');
                                 state.flushResolve();
                                 state.flushResolve = null;
                             }
@@ -1171,8 +1174,6 @@
                     flushPromise.then(() => {
                         if (state.wsReady) {
                             sendAudioEnd();
-                        } else {
-                            console.warn('WS未就緒，無法發送尾幀');
                         }
                         state.audioBuffer = [];
                         isRecording = false;
@@ -1182,7 +1183,6 @@
                         btnVoice.textContent = '🎙️ 唸咒';
                         btnVoice.classList.remove('recording');
                         btnVoice.disabled = (state.phase !== 'voice');
-                        console.log('[錄音] 尾幀已發送，等待服務器響應');
                     });
                 } else {
                     if (state.wsReady) {
@@ -1200,19 +1200,9 @@
 
             // ---------- WebSocket ----------
             function preConnectWebSocket() {
-                if (state.wsReady) {
-                    console.log('[WS] 已就緒');
-                    return Promise.resolve();
-                }
-                if (state.wsConnectPromise) {
-                    console.log('[WS] 等待已有連接');
-                    return state.wsConnectPromise;
-                }
-                console.log('[WS] 開始預連接...');
-                state.wsConnectPromise = connectWebSocket().then(() => {
-                    console.log('[WS] 預連接完成');
-                }).catch((e) => {
-                    console.warn('[WS] 預連接失敗:', e);
+                if (state.wsReady) return Promise.resolve();
+                if (state.wsConnectPromise) return state.wsConnectPromise;
+                state.wsConnectPromise = connectWebSocket().catch(() => {
                     state.wsConnectPromise = null;
                 });
                 return state.wsConnectPromise;
@@ -1245,26 +1235,21 @@
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
-                            console.log('[WS] 連線成功');
                             sendInitFrame();
                             resolve();
                         };
                         state.wsConnection.onerror = (err) => {
                             clearTimeout(timeout);
-                            console.error('[WS] 錯誤:', err);
                             reject(err);
                         };
                         state.wsConnection.onmessage = (e) => {
-                            console.log('[WS] 收到訊息');
                             handleWSMessage(e.data);
                         };
-                        state.wsConnection.onclose = (e) => {
+                        state.wsConnection.onclose = () => {
                             state.wsReady = false;
-                            console.log(`[WS] 連線關閉，代碼=${e.code}`);
                         };
                     });
                 } catch (e) {
-                    console.error('[WS] 連線失敗:', e);
                     setStatus('⚠️ 語音服務連線失敗，請檢查網路', true);
                     throw e;
                 }
@@ -1292,6 +1277,10 @@
                         accent: 'mandarin',
                         rlang: 'zh-cn',
                         ptt: 1,
+                        hotwords: '羊|马|牛|鸟|鱼',
+                        hotword_rule: '1',
+                        nbest: 5,
+                        wbest: 5,
                     },
                     data: { status: 0 }
                 };
@@ -1304,24 +1293,20 @@
                     if (data instanceof Blob) {
                         const reader = new FileReader();
                         reader.onload = () => {
-                            const result = reader.result;
-                            parseWSResult(result);
+                            parseWSResult(reader.result);
                         };
                         reader.readAsText(data);
                     } else {
                         parseWSResult(data);
                     }
-                } catch (e) {
-                    console.error('[WS] 處理訊息異常:', e);
-                }
+                } catch (e) {}
             }
 
             function parseWSResult(text) {
                 try {
                     const json = JSON.parse(text);
                     if (json.code && json.code !== 0) {
-                        console.warn('[WS] 訊飛 API 錯誤:', json.message);
-                        setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
+                        setStatus('⚠️ 語音識別錯誤，請重試', true);
                         return;
                     }
                     let recognized = '';
@@ -1340,22 +1325,18 @@
                             handleRecognitionResult(recognized);
                         }
                     } else {
-                        console.log('[WS] 暫無識別結果');
+                        // 无结果
                     }
-                } catch (e) {
-                    console.error('[WS] 解析結果失敗:', e);
-                }
+                } catch (e) {}
             }
 
-            // ========== 9. 識別結果處理（嚴格單字限制） ==========
+            // ========== 9. 識別結果處理 ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
 
-                // 嚴格檢查：如果識別結果不只一個字，視為無效
-                if (recognized.length > 1) {
-                    setStatus(`❌ 請只朗讀一個字（識別為「${recognized}」）`, true);
-                    // 重置語音狀態，允許重新錄音
+                if (!recognized) {
+                    setStatus('🗣️ 未檢測到語音，請再試一次', true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1368,9 +1349,32 @@
                     return;
                 }
 
+                // 特殊多字映射（转写误差修正）
+                let mapped = recognized;
+                if (specialMapping[recognized]) {
+                    mapped = specialMapping[recognized];
+                } else if (pinyinMap[recognized]) {
+                    // 单字同音字已经映射，不做改动
+                } else {
+                    // 如果识别结果是多字且不在特殊映射中，提示只念一个字
+                    if (recognized.length > 1) {
+                        setStatus('請只朗讀一個目標字', true);
+                        state.phase = 'voice';
+                        btnVoice.disabled = false;
+                        btnVoice.textContent = '🎙️ 唸咒';
+                        btnVoice.classList.remove('recording');
+                        state.isFinalizing = false;
+                        state.isFlushing = false;
+                        closeWS();
+                        resetAudioNode();
+                        state.resultHandled = false;
+                        return;
+                    }
+                }
+
                 const targetChar = state.currentChar.char;
                 const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw.replace(/\d/g, '');
-                const recognizedPinyin = pinyinMap[recognized] || null;
+                const recognizedPinyin = pinyinMap[mapped] || null;
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
                 btnVoice.textContent = '🎙️ 唸咒';
@@ -1383,7 +1387,7 @@
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    setStatus(`😤 咒語比對失敗（識別為「${recognized}」），請再試一次！`, true);
+                    setStatus('😤 咒語比對失敗，請再試一次！', true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
@@ -1406,19 +1410,26 @@
                 revealArea.classList.add('show');
                 revealArea.style.display = 'flex';
                 placeholderArea.style.display = 'none';
-                setStatus(`✨ ${char.char} 已現形！ 繼續伏妖之旅？`, false);
+                setStatus(`✨ ${char.char} 已現形！ 繼續？`, false);
                 btnVoice.style.display = 'none';
-                btnNext.style.display = 'inline-flex';
                 btnVerify.disabled = true;
                 btnClear.disabled = true;
                 state.canvasLocked = true;
                 closeWS();
                 renderOracle();
                 resetAudioNode();
+                // 标记已完成
+                if (!state.completedChars.includes(char.char)) {
+                    state.completedChars.push(char.char);
+                    updateCharListUI();
+                }
+                // 启动相机（如果未启动）
+                startCamera();
             }
 
-            // ========== 11. 流程控制 ==========
-            function resetForNewChar() {
+            // ========== 11. 選擇與切換關卡 ==========
+            function loadChar(charData) {
+                // 重置当前关卡状态
                 closeWS();
                 state.wsConnectPromise = null;
                 isRecording = false;
@@ -1436,101 +1447,86 @@
                 if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = null; }
                 resetAudioNode();
+
+                state.currentChar = charData;
                 drawHistory = [];
                 renderOracle();
+
+                // 显示游戏界面，隐藏选择提示
+                selectHint.style.display = 'none';
+                gameArea.style.display = 'flex';
+
+                // 更新状态文字
+                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
+                pinyinDisplay.classList.remove('show');
+                pinyinDisplay.textContent = '';
+                pinyinDisplay.style.display = 'none';
+                btnVoice.disabled = true;
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+                btnVoice.style.display = 'inline-flex';
+                btnVerify.disabled = false;
+                btnClear.disabled = false;
                 revealArea.classList.remove('show');
                 revealArea.style.display = 'none';
                 placeholderArea.style.display = 'flex';
                 animalImage.style.display = 'none';
-                pinyinDisplay.classList.remove('show');
-                pinyinDisplay.textContent = '';
-                pinyinDisplay.style.display = 'none';
-                btnVoice.style.display = 'inline-flex';
-                btnNext.style.display = 'none';
-                btnVerify.disabled = false;
-                btnClear.disabled = false;
-                btnVoice.disabled = true;
-                btnVoice.textContent = '🎙️ 唸咒';
-                btnVoice.classList.remove('recording');
-                state.audioPrepared = false;
+
+                // 更新符咒列表高亮
+                updateCharListUI();
+
+                // 预先准备音频和WebSocket
+                prepareAudio();
+                preConnectWebSocket();
+                // 不要启动相机，等成功后再启动
             }
 
-            function pickRandomChar() {
-                const total = CHARACTERS.length;
-                if (state.usedCharIds.length >= total) {
-                    state.usedCharIds = [];
-                }
-                const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
-                if (available.length === 0) {
-                    state.usedCharIds = [];
-                    return CHARACTERS[Math.floor(Math.random() * total)];
-                }
-                const picked = available[Math.floor(Math.random() * available.length)];
-                state.usedCharIds.push(picked.id);
-                return picked;
-            }
-
-            function initLevel() {
-                resetForNewChar();
-                state.currentChar = pickRandomChar();
-                renderOracle();
-                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
-                btnVoice.disabled = true;
-                btnVoice.textContent = '🎙️ 唸咒';
-                btnVoice.classList.remove('recording');
-            }
-
-            function handleVerify() {
-                if (state.isVerifying || state.phase === 'reveal') return;
-                if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
-                if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
-                    setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
-                    return;
-                }
-                state.isVerifying = true;
-                btnVerify.disabled = true;
-                setStatus('🔍 比對符文靈力 ...', false);
-                setTimeout(() => {
-                    const score = computeF1Score();
-                    state.drawScore = score;
-                    state.isVerifying = false;
-                    btnVerify.disabled = false;
-                    if (score >= THRESHOLDS.drawPass) {
-                        state.canvasLocked = true;
-                        state.phase = 'voice';
-                        setStatus(`✅ 符文契合度合格！咒語已解鎖`, false);
-                        pinyinDisplay.textContent = state.currentChar.pinyinTone;
-                        pinyinDisplay.style.display = 'block';
-                        setTimeout(() => pinyinDisplay.classList.add('show'), 50);
-                        btnVoice.disabled = false;
-                        btnVoice.textContent = '🎙️ 唸咒';
-                        setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
-                        renderOracle();
-                        prepareAudio();
-                        preConnectWebSocket();
-                        // 啟動相機（AR）
-                        startCamera();
-                    } else {
-                        setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
-                    }
-                }, 500);
-            }
-
-            function handleClear() {
-                if (state.canvasLocked || state.phase === 'reveal') return;
+            function goToSelect() {
+                // 回到选择界面
+                closeWS();
+                state.wsConnectPromise = null;
+                isRecording = false;
+                state.isRecording = false;
+                state.audioBuffer = [];
+                state.drawScore = 0;
+                state.canvasLocked = false;
+                state.phase = 'select';
+                state.wsReady = false;
+                state.recognizedText = '';
+                state.resultReceived = false;
+                state.resultHandled = false;
+                if (recordTimer) { clearTimeout(recordTimer);
+                    recordTimer = null; }
+                if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
+                    state.minDurationTimer = null; }
+                resetAudioNode();
+                state.currentChar = null;
                 drawHistory = [];
                 renderOracle();
-                setStatus('✍️ 已清除，重新描寫', false);
+                selectHint.style.display = 'flex';
+                gameArea.style.display = 'none';
+                revealArea.classList.remove('show');
+                revealArea.style.display = 'none';
+                placeholderArea.style.display = 'flex';
+                animalImage.style.display = 'none';
+                updateCharListUI();
+                // 不释放相机，保持背景
             }
 
-            function handleNext() { initLevel(); }
-
-            function handleVoiceToggle() {
-                if (state.phase !== 'voice') { setStatus('⚠️ 請先通過符文驗證', true); return; }
-                if (isRecording) stopRecording(false);
-                else startRecording();
+            function updateCharListUI() {
+                charBtns.forEach(btn => {
+                    const ch = btn.dataset.char;
+                    btn.classList.remove('active', 'completed');
+                    if (state.completedChars.includes(ch)) {
+                        btn.classList.add('completed');
+                    }
+                    if (state.currentChar && state.currentChar.char === ch) {
+                        btn.classList.add('active');
+                    }
+                });
             }
 
+            // ========== 12. 流程控制 ==========
             function setStatus(html, isError = false) {
                 statusText.innerHTML = html;
                 statusText.style.color = isError ? '#a94442' : '#3a2e1e';
@@ -1545,7 +1541,7 @@
                 state.wsConnectPromise = null;
             }
 
-            // ========== 12. 圖片加載 ==========
+            // ========== 13. 圖片加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
                     return new Promise((resolve) => {
@@ -1553,11 +1549,10 @@
                         img.crossOrigin = 'anonymous';
                         img.onload = () => {
                             char.img = img;
-                            console.log(`✅ 底圖載入成功: ${char.imgSrc}`);
                             resolve();
                         };
                         img.onerror = () => {
-                            console.warn(`⚠️ 底圖載入失敗: ${char.imgSrc}，使用佔位圖`);
+                            // 使用佔位圖
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
                             fallbackCanvas.height = 200;
@@ -1585,7 +1580,7 @@
                 return Promise.all(promises);
             }
 
-            // ========== 13. 初始化 ==========
+            // ========== 14. 初始化 ==========
             async function init() {
                 loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
                 await loadImages();
@@ -1593,21 +1588,82 @@
 
                 resizeCanvas();
                 bindCanvasEvents();
-                btnClear.addEventListener('click', handleClear);
-                btnVerify.addEventListener('click', handleVerify);
-                btnVoice.addEventListener('click', handleVoiceToggle);
-                btnNext.addEventListener('click', handleNext);
+                btnClear.addEventListener('click', function() {
+                    if (state.phase === 'select') return;
+                    if (state.canvasLocked || state.phase === 'reveal') return;
+                    drawHistory = [];
+                    renderOracle();
+                    setStatus('✍️ 已清除，重新描寫', false);
+                });
+                btnVerify.addEventListener('click', function() {
+                    if (state.phase === 'select' || state.phase === 'reveal') return;
+                    if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
+                    if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
+                        setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
+                        return;
+                    }
+                    state.isVerifying = true;
+                    btnVerify.disabled = true;
+                    setStatus('🔍 比對符文靈力 ...', false);
+                    setTimeout(() => {
+                        const score = computeF1Score();
+                        state.drawScore = score;
+                        state.isVerifying = false;
+                        btnVerify.disabled = false;
+                        if (score >= THRESHOLDS.drawPass) {
+                            state.canvasLocked = true;
+                            state.phase = 'voice';
+                            setStatus(`✅ 符文契合度合格！咒語已解鎖`, false);
+                            pinyinDisplay.textContent = state.currentChar.pinyinTone;
+                            pinyinDisplay.style.display = 'block';
+                            setTimeout(() => pinyinDisplay.classList.add('show'), 50);
+                            btnVoice.disabled = false;
+                            btnVoice.textContent = '🎙️ 唸咒';
+                            setStatus(`🗣️ 請唸出咒語`, false);
+                            renderOracle();
+                            prepareAudio();
+                            preConnectWebSocket();
+                        } else {
+                            setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
+                        }
+                    }, 500);
+                });
+                btnVoice.addEventListener('click', function() {
+                    if (state.phase !== 'voice') { setStatus('⚠️ 請先通過符文驗證', true); return; }
+                    if (isRecording) stopRecording(false);
+                    else startRecording();
+                });
+
+                // 符咒按钮点击
+                charBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const ch = this.dataset.char;
+                        const charData = CHARACTERS.find(c => c.char === ch);
+                        if (charData) {
+                            loadChar(charData);
+                        }
+                    });
+                });
+
+                // 退出按钮
+                exitBtn.addEventListener('click', goToSelect);
+
                 let resizeTimer;
                 window.addEventListener('resize', () => {
                     clearTimeout(resizeTimer);
                     resizeTimer = setTimeout(resizeCanvas, 200);
                 });
-                initLevel();
+
+                // 初始显示选择界面
+                selectHint.style.display = 'flex';
+                gameArea.style.display = 'none';
+                state.phase = 'select';
+                updateCharListUI();
+
                 setTimeout(() => loadingOverlay.classList.add('hidden'), 600);
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (嚴格單字 + AR相機)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
