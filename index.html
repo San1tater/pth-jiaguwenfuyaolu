@@ -29,28 +29,22 @@
         }
         #app {
             display: flex;
-            flex-direction: row;
-            /* 強制左右分屏 */
             width: 100vw;
             height: 100vh;
             background: #f5f0e8;
         }
 
-        /* ===== 左側面板 ===== */
         #left-panel {
             flex: 0 0 50%;
             height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 1.2vh 1.2vw;
+            flex-direction: row;
+            padding: 2vh 0 2vh 1vw;
             background: rgba(255, 250, 240, 0.85);
             backdrop-filter: blur(4px);
             border-right: 1px solid rgba(180, 150, 100, 0.2);
             position: relative;
             z-index: 2;
-            overflow: hidden;
         }
         #left-panel::before {
             content: '';
@@ -62,129 +56,119 @@
             background: radial-gradient(circle at 30% 40%, rgba(200, 170, 120, 0.05), transparent 60%);
             pointer-events: none;
             animation: breatheGlow 8s ease-in-out infinite alternate;
+            z-index: -1;
         }
         @keyframes breatheGlow {
-            0% {
-                opacity: 0.3;
-                transform: scale(1);
-            }
-            100% {
-                opacity: 0.8;
-                transform: scale(1.05);
-            }
+            0% { opacity: 0.3; transform: scale(1); }
+            100% { opacity: 0.8; transform: scale(1.05); }
         }
 
-        /* ---- 縮略圖欄 ---- */
-        #thumbnail-bar {
-            width: 100%;
-            max-width: 580px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 0.6vw;
-            padding: 0.6vh 0.2vw;
-            overflow-x: auto;
-            overflow-y: hidden;
-            flex-shrink: 0;
-            position: relative;
-            z-index: 3;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(180, 150, 100, 0.3) transparent;
-            -webkit-overflow-scrolling: touch;
-            min-height: 7.5vh;
-            border-bottom: 1px solid rgba(180, 150, 100, 0.12);
-            margin-bottom: 0.6vh;
-        }
-        #thumbnail-bar::-webkit-scrollbar {
-            height: 4px;
-        }
-        #thumbnail-bar::-webkit-scrollbar-thumb {
-            background: rgba(180, 150, 100, 0.3);
-            border-radius: 4px;
-        }
-        #thumbnail-bar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .thumb-item {
-            flex: 0 0 auto;
-            width: 7.2vh;
-            height: 7.2vh;
-            border-radius: 14px;
-            overflow: hidden;
-            cursor: pointer;
-            border: 2px solid rgba(180, 150, 100, 0.2);
-            background: rgba(255, 255, 255, 0.6);
-            transition: all 0.25s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.3vh;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            position: relative;
-            touch-action: manipulation;
-        }
-        .thumb-item:active {
-            transform: scale(0.92);
-        }
-        .thumb-item.active {
-            border-color: #b8860b;
-            box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.2), 0 4px 16px rgba(184, 134, 11, 0.15);
-            background: rgba(255, 248, 235, 0.9);
-        }
-        .thumb-item.locked {
-            opacity: 0.4;
-            cursor: not-allowed;
-            filter: grayscale(0.6);
-            pointer-events: none;
-            border-color: rgba(180, 150, 100, 0.1);
-        }
-        .thumb-item .thumb-img {
-            width: 80%;
-            height: 80%;
-            object-fit: contain;
-            display: block;
-        }
-        /* 移除標籤和完成勾 */
-
-        /* ---- 狀態區 ---- */
-        #status-area {
-            width: 100%;
-            max-width: 580px;
-            text-align: center;
-            padding: 0.8vh 1vw;
-            margin-bottom: 0.8vh;
-            background: rgba(255, 245, 230, 0.6);
-            border: 1px solid rgba(180, 150, 100, 0.15);
-            border-radius: 14px;
-            position: relative;
-            z-index: 2;
-            min-height: 6vh;
+        /* 缩略图列 */
+        #thumbnail-column {
+            flex: 0 0 80px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            gap: 1.2vh;
+            padding: 1vh 0;
+            border-right: 1px solid rgba(180, 150, 100, 0.15);
+            margin-right: 1vw;
+        }
+        .thumb-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            border: 2px solid rgba(180, 150, 100, 0.3);
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .thumb-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .thumb-btn:hover {
+            border-color: #b8860b;
+            background: rgba(255,215,0,0.1);
+        }
+        .thumb-btn.active {
+            border-color: #b8860b;
+            background: rgba(255,215,0,0.2);
+            box-shadow: 0 0 20px rgba(184, 134, 11, 0.15);
+        }
+        .thumb-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: rgba(180,150,100,0.2);
+            filter: grayscale(0.3);
+        }
+        .thumb-btn.exit-btn {
+            margin-top: auto;
+            border-color: rgba(200, 70, 70, 0.3);
+            background: rgba(200,70,70,0.05);
+            font-size: 0.8rem;
+            color: #a94442;
+            font-weight: 500;
+        }
+        .thumb-btn.exit-btn:hover {
+            background: rgba(200,70,70,0.1);
+            border-color: #a94442;
+        }
+
+        /* 右侧主内容区 */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-right: 1vw;
+        }
+
+        #status-area {
+            width: 100%;
+            max-width: 580px;
+            text-align: center;
+            padding: 1.2vh 1vw;
+            margin-bottom: 1.5vh;
+            background: rgba(255, 245, 230, 0.7);
+            border: 1px solid rgba(180, 150, 100, 0.2);
+            border-radius: 16px;
+            position: relative;
+            z-index: 2;
+            min-height: 7vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         #status-text {
-            font-size: clamp(0.9rem, 1.8vh, 1.5rem);
+            font-size: clamp(1.1rem, 2.2vh, 1.8rem);
             color: #3a2e1e;
             letter-spacing: 0.06em;
             font-weight: 400;
-            line-height: 1.5;
+            line-height: 1.6;
         }
         #status-text .highlight {
             color: #b8860b;
             font-weight: 600;
-            text-shadow: 0 0 20px rgba(184, 134, 11, 0.12);
+            text-shadow: 0 0 20px rgba(184, 134, 11, 0.15);
         }
         #pinyin-display {
-            font-size: clamp(1.6rem, 3.2vh, 2.6rem);
+            font-size: clamp(1.8rem, 3.6vh, 3rem);
             color: #b8860b;
             font-weight: 600;
             letter-spacing: 0.1em;
-            text-shadow: 0 0 30px rgba(184, 134, 11, 0.12);
-            margin-top: 0.1vh;
+            text-shadow: 0 0 30px rgba(184, 134, 11, 0.15);
+            margin-top: 0.2vh;
             display: none;
         }
         #pinyin-display.show {
@@ -192,31 +176,22 @@
             animation: pinyinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         @keyframes pinyinPop {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) translateY(10px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            0% { opacity: 0; transform: scale(0.6) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        /* ---- 畫布 ---- */
         #canvas-wrapper {
             position: relative;
             width: 100%;
             max-width: 580px;
             aspect-ratio: 1 / 1;
-            border-radius: 18px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 0 40px rgba(180, 150, 100, 0.12), inset 0 0 60px rgba(255, 250, 240, 0.4);
-            border: 1px solid rgba(180, 150, 100, 0.2);
+            box-shadow: 0 0 40px rgba(180, 150, 100, 0.15), inset 0 0 60px rgba(255, 250, 240, 0.5);
+            border: 1px solid rgba(180, 150, 100, 0.25);
             background: #ffffff;
             z-index: 2;
             touch-action: none;
-            flex: 1 1 auto;
-            min-height: 0;
         }
         #canvas-wrapper canvas {
             display: block;
@@ -233,31 +208,29 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(200, 180, 160, 0.06) 100%);
-            border-radius: 18px;
+            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(200, 180, 160, 0.1) 100%);
+            border-radius: 20px;
             z-index: 1;
         }
 
-        /* ---- 控制按鈕 ---- */
         #controls {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
-            gap: 0.6vh 0.8vw;
+            gap: 0.8vh 1vw;
             width: 100%;
             max-width: 580px;
-            margin-top: 1.2vh;
-            padding: 0.4vh 0;
+            margin-top: 1.8vh;
+            padding: 0.6vh 0;
             position: relative;
             z-index: 2;
-            flex-shrink: 0;
         }
         .btn {
-            padding: 0.6vh 1.6vw;
-            min-height: 4.6vh;
-            min-width: 7vw;
-            font-size: clamp(0.7rem, 1.4vh, 1.1rem);
+            padding: 0.8vh 1.8vw;
+            min-height: 5vh;
+            min-width: 8vw;
+            font-size: clamp(0.8rem, 1.6vh, 1.2rem);
             font-weight: 500;
             border: none;
             border-radius: 40px;
@@ -267,24 +240,22 @@
             touch-action: manipulation;
             background: rgba(255, 255, 255, 0.6);
             color: #3a2e1e;
-            border: 1px solid rgba(180, 150, 100, 0.25);
+            border: 1px solid rgba(180, 150, 100, 0.3);
             backdrop-filter: blur(4px);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.3vw;
+            gap: 0.4vw;
             flex: 0 1 auto;
             white-space: nowrap;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
-        .btn:active {
-            transform: scale(0.94);
-        }
+        .btn:active { transform: scale(0.94); }
         .btn-primary {
             background: linear-gradient(135deg, #d4a017, #b8860b);
             color: #fff;
             border-color: #b8860b;
-            box-shadow: 0 4px 20px rgba(184, 134, 11, 0.2);
+            box-shadow: 0 4px 20px rgba(184, 134, 11, 0.25);
         }
         .btn-primary:disabled {
             opacity: 0.4;
@@ -305,49 +276,29 @@
             background: rgba(200, 70, 70, 0.1);
         }
         @keyframes pulseMic {
-            0%,
-            100% {
-                box-shadow: 0 0 10px rgba(192, 57, 43, 0.12);
-            }
-            50% {
-                box-shadow: 0 0 30px rgba(192, 57, 43, 0.25), 0 0 60px rgba(192, 57, 43, 0.05);
-            }
+            0%, 100% { box-shadow: 0 0 10px rgba(192, 57, 43, 0.15); }
+            50% { box-shadow: 0 0 30px rgba(192, 57, 43, 0.3), 0 0 60px rgba(192, 57, 43, 0.05); }
         }
         .btn-success {
             background: linear-gradient(135deg, #5cb85c, #449d44);
             color: #fff;
             border-color: #449d44;
-            box-shadow: 0 4px 20px rgba(68, 157, 68, 0.2);
+            box-shadow: 0 4px 20px rgba(68, 157, 68, 0.25);
         }
         .btn-clear {
-            background: rgba(200, 180, 160, 0.15);
-            border-color: rgba(180, 150, 100, 0.12);
+            background: rgba(200, 180, 160, 0.2);
+            border-color: rgba(180, 150, 100, 0.15);
             color: #6b5a44;
         }
-        .btn-clear:active {
-            background: rgba(200, 180, 160, 0.3);
-        }
-        .btn-exit {
-            background: rgba(200, 80, 80, 0.08);
-            border-color: rgba(200, 80, 80, 0.15);
-            color: #a05252;
-        }
-        .btn-exit:active {
-            background: rgba(200, 80, 80, 0.2);
-        }
-        .btn-exit:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .btn-clear:active { background: rgba(200, 180, 160, 0.35); }
 
-        /* ===== 右側 AR 相機 ===== */
+        /* 右側 AR 相機 */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
             position: relative;
             overflow: hidden;
-            background: #1a1a1a;
+            background: #000;
         }
 
         #camera-video {
@@ -371,19 +322,19 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.25);
-            font-size: clamp(0.9rem, 1.8vh, 1.4rem);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: clamp(1rem, 2vh, 1.6rem);
             letter-spacing: 0.2em;
             text-align: center;
             padding: 2vh;
-            background: rgba(0, 0, 0, 0.15);
+            background: rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(2px);
             pointer-events: none;
         }
         #placeholder-area .symbol {
-            font-size: clamp(2.6rem, 7vh, 5rem);
-            opacity: 0.25;
-            margin-bottom: 0.8vh;
+            font-size: clamp(3rem, 8vh, 6rem);
+            opacity: 0.3;
+            margin-bottom: 1vh;
         }
 
         #reveal-area {
@@ -405,24 +356,18 @@
             display: flex;
         }
         @keyframes revealAppear {
-            0% {
-                opacity: 0;
-                transform: scale(0.6) rotate(-6deg);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) rotate(0deg);
-            }
+            0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
 
         #modern-char {
-            font-size: clamp(2.8rem, 9vh, 7rem);
+            font-size: clamp(3rem, 10vh, 8rem);
             font-weight: 700;
             color: #ffd700;
-            text-shadow: 0 0 60px rgba(255, 215, 0, 0.4), 0 0 120px rgba(255, 215, 0, 0.15);
+            text-shadow: 0 0 60px rgba(255, 215, 0, 0.5), 0 0 120px rgba(255, 215, 0, 0.2);
             letter-spacing: 0.1em;
             line-height: 1.2;
-            flex: 0 0 12%;
+            flex: 0 0 12.5%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -430,37 +375,27 @@
             animation: charGlow 3s ease-in-out infinite alternate;
         }
         @keyframes charGlow {
-            0% {
-                text-shadow: 0 0 50px rgba(184, 134, 11, 0.2), 0 0 100px rgba(184, 134, 11, 0.05);
-            }
-            100% {
-                text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15);
-            }
+            0% { text-shadow: 0 0 60px rgba(184, 134, 11, 0.2), 0 0 120px rgba(184, 134, 11, 0.05); }
+            100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
         }
 
         #animal-image {
-            flex: 0 0 88%;
+            flex: 0 0 87.5%;
             width: 100%;
             height: auto;
             max-height: 100%;
             object-fit: contain;
             mix-blend-mode: multiply;
             background: transparent;
-            filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.08));
+            filter: drop-shadow(0 0 30px rgba(184, 134, 11, 0.1));
             animation: floatAnimal 3.5s ease-in-out infinite;
             pointer-events: none;
         }
         @keyframes floatAnimal {
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-12px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
         }
 
-        /* ===== 加載遮罩 ===== */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -483,8 +418,8 @@
             pointer-events: none;
         }
         #loading-overlay .spinner {
-            width: 44px;
-            height: 44px;
+            width: 50px;
+            height: 50px;
             border: 3px solid rgba(184, 134, 11, 0.1);
             border-top: 3px solid #b8860b;
             border-radius: 50%;
@@ -492,44 +427,9 @@
             margin-bottom: 2vh;
         }
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-
-        /* ===== 強制左右分屏，移除豎屏變換 ===== */
-        @media (max-width: 640px) {
-            #left-panel {
-                padding: 1vh 1.2vw;
-            }
-            .thumb-item {
-                width: 6.4vh;
-                height: 6.4vh;
-                border-radius: 12px;
-            }
-            #thumbnail-bar {
-                min-height: 6.8vh;
-                gap: 0.8vw;
-                padding: 0.4vh 0.2vw;
-            }
-            .btn {
-                min-height: 4vh;
-                min-width: 10vw;
-                padding: 0.4vh 1.4vw;
-                font-size: clamp(0.6rem, 1.2vh, 0.9rem);
-            }
-            #status-area {
-                min-height: 5vh;
-                padding: 0.4vh 1vw;
-            }
-            #status-text {
-                font-size: clamp(0.75rem, 1.5vh, 1.2rem);
-            }
-        }
-        /* 移除所有豎屏覆蓋，保持左右 */
     </style>
 </head>
 <body>
@@ -540,22 +440,26 @@
 
     <div id="app">
         <div id="left-panel">
-            <div id="thumbnail-bar"></div>
-
-            <div id="status-area">
-                <div id="status-text">🔮 請選擇一個 <span class="highlight">符咒</span> 開始</div>
-                <div id="pinyin-display"></div>
+            <!-- 缩略图列 -->
+            <div id="thumbnail-column">
+                <!-- 由JS动态生成 -->
+                <button class="thumb-btn exit-btn" id="exitBtn" style="display:none;">✕ 退出</button>
             </div>
-
-            <div id="canvas-wrapper">
-                <canvas id="oracleCanvas"></canvas>
-            </div>
-
-            <div id="controls">
-                <button class="btn btn-clear" id="btnClear">🗑 清除</button>
-                <button class="btn btn-primary" id="btnVerify">⚡ 驗證符文</button>
-                <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
-                <button class="btn btn-exit" id="btnExit">🚪 退出</button>
+            <!-- 主内容 -->
+            <div id="main-content">
+                <div id="status-area">
+                    <div id="status-text">👆 請選擇一個符咒</div>
+                    <div id="pinyin-display"></div>
+                </div>
+                <div id="canvas-wrapper">
+                    <canvas id="oracleCanvas"></canvas>
+                </div>
+                <div id="controls">
+                    <button class="btn btn-clear" id="btnClear" disabled>🗑 清除</button>
+                    <button class="btn btn-primary" id="btnVerify" disabled>⚡ 驗證符文</button>
+                    <button class="btn btn-voice" id="btnVoice" disabled>🎙️ 唸咒</button>
+                    <button class="btn btn-success" id="btnNext" style="display:none;">🔮 繼續</button>
+                </div>
             </div>
         </div>
 
@@ -563,8 +467,8 @@
             <video id="camera-video" autoplay playsinline muted></video>
             <div id="placeholder-area">
                 <div class="symbol">✦</div>
-                <div>選擇符咒 · 描繪甲骨文</div>
-                <div style="font-size:0.7em; opacity:0.4; margin-top:0.4vh;">召喚上古靈力</div>
+                <div>等待符文之力</div>
+                <div style="font-size:0.7em; opacity:0.5; margin-top:0.5vh;">描繪甲骨文 · 誦唸咒語</div>
             </div>
             <div id="reveal-area">
                 <div id="modern-char">羊</div>
@@ -631,7 +535,7 @@
                 img: null,
             }];
 
-            // ========== 3. 同音字映射（含擴展：理由→牛，你好→鳥，與→魚） ==========
+            // ========== 3. 同音字映射（忽略聲調），并扩展多字词映射 ==========
             function buildFullPinyinMap() {
                 const baseMap = {
                     '羊': 'yang',
@@ -675,20 +579,12 @@
                     '沤': 'niu',
                     '紐': 'niu',
                     '鈕': 'niu',
-                    // 擴展：理由 → 牛
-                    '理由': 'niu',
-                    '理': 'niu',
-                    '由': 'niu',
                     '鳥': 'niao',
                     '鸟': 'niao',
                     '袅': 'niao',
                     '嬲': 'niao',
                     '茑': 'niao',
                     '裊': 'niao',
-                    // 擴展：你好 → 鳥
-                    '你好': 'niao',
-                    '你': 'niao',
-                    '好': 'niao',
                     '魚': 'yu',
                     '鱼': 'yu',
                     '渔': 'yu',
@@ -747,8 +643,6 @@
                     '乐': 'yu',
                     '岳': 'yu',
                     '钥': 'yu',
-                    // 擴展：與 → 魚
-                    '與': 'yu',
                 };
                 const map = {};
                 CHARACTERS.forEach(item => {
@@ -760,6 +654,11 @@
                     }
                     map[item.char] = pinyinNoTone;
                 });
+                // 添加多字词映射（允许这些词通过）
+                map['你好'] = 'niao';
+                map['理由'] = 'niu';
+                map['與'] = 'yu'; // 繁体“與”已经存在，但确保覆盖
+                map['与'] = 'yu';
                 return map;
             }
 
@@ -767,8 +666,8 @@
 
             // ========== 4. 狀態 ==========
             const state = {
-                currentChar: null,
-                phase: 'select', // 'select' | 'draw' | 'voice' | 'reveal'
+                selectedCharId: null,        // 当前选中的符咒id
+                phase: 'select',             // 'select' | 'draw' | 'voice' | 'reveal'
                 canvasLocked: false,
                 isRecording: false,
                 isVerifying: false,
@@ -793,9 +692,7 @@
                 preparingAudio: false,
                 resultReceived: false,
                 resultHandled: false,
-                isLocked: false, // 缩略图锁定
-                selectedCharId: null,
-                // 移除 completedIds
+                isLocked: false,            // 锁定选择，防止切换
             };
 
             // ========== 5. DOM ==========
@@ -807,7 +704,7 @@
             const btnClear = $('btnClear');
             const btnVerify = $('btnVerify');
             const btnVoice = $('btnVoice');
-            const btnExit = $('btnExit');
+            const btnNext = $('btnNext');
             const revealArea = $('reveal-area');
             const placeholderArea = $('placeholder-area');
             const modernChar = $('modern-char');
@@ -815,7 +712,8 @@
             const cameraVideo = $('camera-video');
             const loadingOverlay = $('loading-overlay');
             const loadingText = $('loading-text');
-            const thumbnailBar = $('thumbnail-bar');
+            const thumbColumn = $('thumbnail-column');
+            const exitBtn = $('exitBtn');
 
             // ========== 6. Canvas ==========
             let canvasW, canvasH;
@@ -835,19 +733,18 @@
                 ctx.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                // 默認筆跡為硃砂紅
-                ctx.strokeStyle = '#c0392b'; // 硃砂紅
-                ctx.shadowColor = 'rgba(192, 57, 43, 0.15)';
+                ctx.strokeStyle = '#5a4a3a';
+                ctx.shadowColor = 'rgba(100,80,60,0.1)';
                 ctx.shadowBlur = 8;
                 renderOracle();
             }
 
             function renderOracle() {
                 ctx.clearRect(0, 0, canvasW, canvasH);
-                const char = state.currentChar;
+                const char = state.selectedCharId ? CHARACTERS.find(c => c.id === state.selectedCharId) : null;
                 if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
                     ctx.save();
-                    ctx.globalAlpha = 0.22;
+                    ctx.globalAlpha = 0.25;
                     ctx.drawImage(char.img, 0, 0, canvasW, canvasH);
                     ctx.restore();
                 } else {
@@ -855,18 +752,17 @@
                     ctx.font = '18px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('字形載入中...', canvasW / 2, canvasH / 2);
+                    ctx.fillText(state.phase === 'select' ? '請選擇符咒' : '字形載入中...', canvasW / 2, canvasH / 2);
                 }
                 if (drawHistory.length > 0) {
                     ctx.save();
                     if (state.canvasLocked && state.phase === 'voice') {
-                        // 金色效果
                         ctx.strokeStyle = '#ffd700';
-                        ctx.shadowColor = 'rgba(255,215,0,0.35)';
+                        ctx.shadowColor = 'rgba(255,215,0,0.4)';
                         ctx.shadowBlur = 20;
                     } else {
-                        ctx.strokeStyle = '#c0392b'; // 硃砂紅
-                        ctx.shadowColor = 'rgba(192, 57, 43, 0.15)';
+                        ctx.strokeStyle = '#5a4a3a';
+                        ctx.shadowColor = 'rgba(100,80,60,0.15)';
                         ctx.shadowBlur = 10;
                     }
                     ctx.lineWidth = Math.max(3, canvasW * 0.02);
@@ -899,7 +795,7 @@
             }
 
             function moveDraw(e) {
-                if (!isDrawing || state.canvasLocked) return;
+                if (!isDrawing || state.canvasLocked || state.phase === 'select') return;
                 e.preventDefault();
                 const pos = getPos(e);
                 const currentPath = drawHistory[drawHistory.length - 1];
@@ -943,7 +839,7 @@
                 off1.width = w;
                 off1.height = h;
                 const ctx1 = off1.getContext('2d');
-                const char = state.currentChar;
+                const char = state.selectedCharId ? CHARACTERS.find(c => c.id === state.selectedCharId) : null;
                 if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
                     ctx1.drawImage(char.img, 0, 0, w, h);
                 }
@@ -1091,6 +987,7 @@
             let recordTimer = null;
             let sourceNode = null;
 
+            // ---------- 相機 ----------
             async function startCamera() {
                 if (cameraStream) {
                     if (cameraVideo.srcObject !== cameraStream) {
@@ -1106,12 +1003,12 @@
                     cameraStream = stream;
                     cameraVideo.srcObject = stream;
                     await cameraVideo.play();
-                    console.log('[AR] 相機已啟動');
                 } catch (e) {
-                    console.warn('[AR] 相機啟動失敗，使用靜態背景');
+                    // 忽略错误
                 }
             }
 
+            // ---------- 音頻 ----------
             async function prepareAudio() {
                 if (state.audioPrepared) return;
                 if (state.preparingAudio) {
@@ -1125,7 +1022,7 @@
                     });
                 }
                 state.preparingAudio = true;
-                console.log('[準備] 初始化音頻...');
+
                 try {
                     if (!audioContext || audioContext.state === 'closed') {
                         audioContext = new(window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_CONFIG
@@ -1149,7 +1046,6 @@
                             },
                             video: false,
                         });
-                        console.log('[準備] 麥克風權限已獲得');
                     }
 
                     if (!audioWorkletNode) {
@@ -1176,13 +1072,11 @@
                         };
                         sourceNode.connect(audioWorkletNode);
                         audioWorkletNode.connect(audioContext.destination);
-                        console.log('[準備] AudioWorkletNode 創建成功');
                     }
 
                     state.audioPrepared = true;
-                    console.log('[準備] 音頻初始化完成');
                 } catch (e) {
-                    console.error('[準備] 音頻初始化失敗:', e);
+                    setStatus('⚠️ 麥克風初始化失敗: ' + e.message, true);
                 } finally {
                     state.preparingAudio = false;
                 }
@@ -1190,23 +1084,24 @@
 
             function resetAudioNode() {
                 if (audioWorkletNode) {
-                    try { audioWorkletNode.disconnect();
-                        audioWorkletNode = null; } catch (e) {}
+                    try {
+                        audioWorkletNode.disconnect();
+                        audioWorkletNode = null;
+                    } catch (e) {}
                 }
                 if (sourceNode) {
-                    try { sourceNode.disconnect();
-                        sourceNode = null; } catch (e) {}
+                    try {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    } catch (e) {}
                 }
                 state.audioPrepared = false;
                 state.audioBuffer = [];
-                console.log('[重置] 音頻節點已斷開');
             }
 
+            // ---------- 發送音頻 ----------
             function sendAudioChunk(b64Data, isFlush = false) {
-                if (!state.wsReady || !state.wsConnection) {
-                    console.warn('WebSocket未就緒，丟棄音頻幀');
-                    return;
-                }
+                if (!state.wsReady || !state.wsConnection) return;
                 const payload = {
                     data: {
                         status: 1,
@@ -1218,9 +1113,8 @@
                 state.audioBuffer.push(b64Data);
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log(`[WS] 發送音頻幀, 大小=${b64Data.length}${isFlush ? ' (flush)' : ''}`);
                 } catch (e) {
-                    console.error('發送音訊幀失敗:', e);
+                    // ignore
                 }
             }
 
@@ -1229,12 +1123,12 @@
                 const payload = { data: { status: 2 } };
                 try {
                     state.wsConnection.send(JSON.stringify(payload));
-                    console.log('[WS] 發送尾幀 status=2');
                 } catch (e) {
-                    console.error('發送尾幀失敗:', e);
+                    // ignore
                 }
             }
 
+            // ---------- 錄音控制 ----------
             async function startRecording() {
                 if (isRecording) return;
                 if (state.phase !== 'voice') {
@@ -1246,13 +1140,11 @@
                     await prepareAudio();
                 }
                 if (!state.wsReady) {
-                    console.log('[WS] 等待 WebSocket 就緒...');
                     if (state.wsConnectPromise) {
                         await state.wsConnectPromise;
                     } else {
                         await connectWebSocket();
                     }
-                    console.log('[WS] 就緒');
                 }
 
                 if (!audioWorkletNode) {
@@ -1271,7 +1163,7 @@
                 btnVoice.textContent = '⏹️ 停止錄音';
                 btnVoice.classList.add('recording');
                 btnVoice.disabled = false;
-                setStatus('🎤 請朗讀咒語', false);
+                setStatus('🎤 請朗讀咒語（語音識別自動比對）', false);
                 if (recordTimer) clearTimeout(recordTimer);
                 recordTimer = setTimeout(() => {
                     if (isRecording) stopRecording(true);
@@ -1289,7 +1181,7 @@
                 btnVoice.disabled = true;
                 btnVoice.textContent = '⏳ 處理中...';
                 btnVoice.classList.remove('recording');
-                setStatus('⏳ 聆聽咒語中 ...', false);
+                setStatus('⏳ 語音識別中，請等候 ...', false);
 
                 if (remaining > 0) {
                     if (state.minDurationTimer) clearTimeout(state.minDurationTimer);
@@ -1307,8 +1199,10 @@
                 state.isFlushing = true;
 
                 if (sourceNode) {
-                    try { sourceNode.disconnect();
-                        sourceNode = null; } catch (e) {}
+                    try {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    } catch (e) {}
                 }
 
                 if (recordTimer) { clearTimeout(recordTimer);
@@ -1317,13 +1211,11 @@
                     state.minDurationTimer = null; }
 
                 if (audioWorkletNode) {
-                    console.log('[Worklet] 發送 flush 指令');
                     audioWorkletNode.port.postMessage({ type: 'flush' });
                     const flushPromise = new Promise((resolve) => {
                         state.flushResolve = resolve;
                         setTimeout(() => {
                             if (state.flushResolve) {
-                                console.warn('[Worklet] flush 超時，強制繼續');
                                 state.flushResolve();
                                 state.flushResolve = null;
                             }
@@ -1332,8 +1224,6 @@
                     flushPromise.then(() => {
                         if (state.wsReady) {
                             sendAudioEnd();
-                        } else {
-                            console.warn('WS未就緒，無法發送尾幀');
                         }
                         state.audioBuffer = [];
                         isRecording = false;
@@ -1343,7 +1233,6 @@
                         btnVoice.textContent = '🎙️ 唸咒';
                         btnVoice.classList.remove('recording');
                         btnVoice.disabled = (state.phase !== 'voice');
-                        console.log('[錄音] 尾幀已發送，等待服務器響應');
                     });
                 } else {
                     if (state.wsReady) {
@@ -1396,26 +1285,21 @@
                         state.wsConnection.onopen = () => {
                             clearTimeout(timeout);
                             state.wsReady = true;
-                            console.log('[WS] 連線成功');
                             sendInitFrame();
                             resolve();
                         };
                         state.wsConnection.onerror = () => {
                             clearTimeout(timeout);
-                            console.error('[WS] 錯誤');
-                            reject(new Error('WS error'));
+                            reject(new Error('WebSocket error'));
                         };
                         state.wsConnection.onmessage = (e) => {
-                            console.log('[WS] 收到訊息');
                             handleWSMessage(e.data);
                         };
                         state.wsConnection.onclose = () => {
                             state.wsReady = false;
-                            console.log('[WS] 連線關閉');
                         };
                     });
                 } catch (e) {
-                    console.error('[WS] 連線失敗:', e);
                     throw e;
                 }
             }
@@ -1462,7 +1346,7 @@
                         parseWSResult(data);
                     }
                 } catch (e) {
-                    console.error('[WS] 處理訊息異常:', e);
+                    // ignore
                 }
             }
 
@@ -1470,7 +1354,7 @@
                 try {
                     const json = JSON.parse(text);
                     if (json.code && json.code !== 0) {
-                        console.warn('[WS] 訊飛 API 錯誤:', json.message);
+                        setStatus('⚠️ 語音識別錯誤: ' + (json.message || '未知錯誤'), true);
                         return;
                     }
                     let recognized = '';
@@ -1484,30 +1368,61 @@
                         }
                         recognized = recognized.replace(/[\s，。、！？；：,.!?;:]/g, '');
                         state.recognizedText = recognized;
-                        console.log('[識別] 原始結果:', recognized);
                         if (json.data.status === 2 || json.data.result.ls === true) {
                             state.resultReceived = true;
                             handleRecognitionResult(recognized);
                         }
-                    } else {
-                        console.log('[WS] 暫無識別結果');
                     }
                 } catch (e) {
-                    console.error('[WS] 解析結果失敗:', e);
+                    // ignore
                 }
             }
 
-            // ========== 9. 識別結果處理（不顯示具體字，不限制單字） ==========
+            // ========== 9. 識別結果處理（支援多字詞映射） ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
 
-                const targetChar = state.currentChar.char;
-                const targetPinyin = pinyinMap[targetChar] || state.currentChar.pinyinRaw.replace(/\d/g, '');
+                if (!recognized) {
+                    setStatus('🗣️ 未檢測到語音，請再試一次', true);
+                    state.phase = 'voice';
+                    btnVoice.disabled = false;
+                    btnVoice.textContent = '🎙️ 唸咒';
+                    btnVoice.classList.remove('recording');
+                    state.isFinalizing = false;
+                    state.isFlushing = false;
+                    closeWS();
+                    resetAudioNode();
+                    state.resultHandled = false;
+                    return;
+                }
 
-                // 直接使用整個識別結果（去除標點）查映射表
-                const recognizedPinyin = pinyinMap[recognized] || null;
-                const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
+                // 检查是否命中多字词映射（直接取映射后的拼音）
+                let matchedPinyin = null;
+                if (pinyinMap[recognized]) {
+                    matchedPinyin = pinyinMap[recognized];
+                } else {
+                    // 如果不是多字词，但长度>1，则报错
+                    if (recognized.length > 1) {
+                        setStatus('❌ 請只朗讀一個目標字', true);
+                        state.phase = 'voice';
+                        btnVoice.disabled = false;
+                        btnVoice.textContent = '🎙️ 唸咒';
+                        btnVoice.classList.remove('recording');
+                        state.isFinalizing = false;
+                        state.isFlushing = false;
+                        closeWS();
+                        resetAudioNode();
+                        state.resultHandled = false;
+                        return;
+                    }
+                    // 单字则查映射
+                    matchedPinyin = pinyinMap[recognized] || null;
+                }
+
+                const targetChar = state.selectedCharId ? CHARACTERS.find(c => c.id === state.selectedCharId).char : '';
+                const targetPinyin = pinyinMap[targetChar] || '';
+                const isMatch = matchedPinyin && matchedPinyin === targetPinyin;
 
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
@@ -1519,7 +1434,6 @@
                     setStatus('🎉 咒語正確！妖怪現形！', false);
                     revealMonster();
                 } else {
-                    // 不顯示識別到的字，只提示失敗
                     setStatus('😤 咒語比對失敗，請再試一次！', true);
                     state.phase = 'voice';
                     btnVoice.disabled = false;
@@ -1533,7 +1447,7 @@
             // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
-                const char = state.currentChar;
+                const char = state.selectedCharId ? CHARACTERS.find(c => c.id === state.selectedCharId) : null;
                 if (!char) return;
                 modernChar.textContent = char.char;
                 if (char.animalImg) {
@@ -1545,168 +1459,178 @@
                 placeholderArea.style.display = 'none';
                 setStatus(`✨ ${char.char} 已現形！ 繼續伏妖之旅？`, false);
                 btnVoice.style.display = 'none';
+                btnNext.style.display = 'inline-flex';
                 btnVerify.disabled = true;
                 btnClear.disabled = true;
                 state.canvasLocked = true;
                 closeWS();
                 renderOracle();
                 resetAudioNode();
-                // 移除完成標記
+                // 保持锁定状态，退出后重置
             }
 
-            // ========== 11. 流程控制 ==========
-            function resetForNewChar(keepLock = false) {
+            // ========== 11. 选择与退出逻辑 ==========
+            function selectChar(charId) {
+                if (state.isLocked) return;
+                const char = CHARACTERS.find(c => c.id === charId);
+                if (!char) return;
+                state.selectedCharId = charId;
+                state.phase = 'draw';
+                state.canvasLocked = false;
+                state.drawScore = 0;
+                drawHistory = [];
+                // 更新缩略图高亮
+                document.querySelectorAll('.thumb-btn:not(.exit-btn)').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.id === charId);
+                });
+                // 启用按钮
+                btnClear.disabled = false;
+                btnVerify.disabled = false;
+                btnVoice.disabled = true;
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+                btnNext.style.display = 'none';
+                btnVoice.style.display = 'inline-flex';
+                // 更新状态
+                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
+                pinyinDisplay.classList.remove('show');
+                pinyinDisplay.textContent = '';
+                pinyinDisplay.style.display = 'none';
+                renderOracle();
+                // 隐藏退出按钮（缩略图列仍显示）
+                exitBtn.style.display = 'none';
+                // 准备音频和WebSocket（预连接）
+                prepareAudio();
+                preConnectWebSocket();
+                // 启动相机
+                startCamera();
+            }
+
+            function exitSelection() {
+                // 重置所有状态
+                state.isLocked = false;
+                state.selectedCharId = null;
+                state.phase = 'select';
+                state.canvasLocked = false;
+                drawHistory = [];
+                renderOracle();
+                // 重置按钮
+                btnClear.disabled = true;
+                btnVerify.disabled = true;
+                btnVoice.disabled = true;
+                btnVoice.textContent = '🎙️ 唸咒';
+                btnVoice.classList.remove('recording');
+                btnNext.style.display = 'none';
+                btnVoice.style.display = 'inline-flex';
+                setStatus('👆 請選擇一個符咒', false);
+                pinyinDisplay.classList.remove('show');
+                pinyinDisplay.textContent = '';
+                pinyinDisplay.style.display = 'none';
+                // 取消所有高亮
+                document.querySelectorAll('.thumb-btn:not(.exit-btn)').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                exitBtn.style.display = 'none';
+                // 关闭WebSocket和音频资源
                 closeWS();
-                state.wsConnectPromise = null;
+                resetAudioNode();
+                // 释放音频上下文
+                if (audioContext) {
+                    try { audioContext.close(); } catch (e) {}
+                    audioContext = null;
+                    mediaStream = null;
+                    audioWorkletNode = null;
+                    sourceNode = null;
+                    state.audioPrepared = false;
+                }
+                // 重置录制状态
                 isRecording = false;
                 state.isRecording = false;
-                state.audioBuffer = [];
-                state.drawScore = 0;
-                state.canvasLocked = false;
-                state.phase = 'draw';
-                state.wsReady = false;
-                state.recognizedText = '';
-                state.resultReceived = false;
-                state.resultHandled = false;
+                state.isFinalizing = false;
+                state.isFlushing = false;
                 if (recordTimer) { clearTimeout(recordTimer);
                     recordTimer = null; }
                 if (state.minDurationTimer) { clearTimeout(state.minDurationTimer);
                     state.minDurationTimer = null; }
-                resetAudioNode();
-                drawHistory = [];
-                renderOracle();
-                revealArea.classList.remove('show');
-                revealArea.style.display = 'none';
-                placeholderArea.style.display = 'flex';
-                animalImage.style.display = 'none';
-                pinyinDisplay.classList.remove('show');
-                pinyinDisplay.textContent = '';
-                pinyinDisplay.style.display = 'none';
-                btnVoice.style.display = 'inline-flex';
-                btnVerify.disabled = false;
-                btnClear.disabled = false;
-                btnVoice.disabled = true;
-                btnVoice.textContent = '🎙️ 唸咒';
-                btnVoice.classList.remove('recording');
-                state.audioPrepared = false;
-                if (!keepLock) {
-                    state.isLocked = false;
-                }
-                updateThumbnailLockState();
             }
 
-            function loadLevel(char) {
-                if (state.isLocked && state.phase !== 'select') {
-                    return;
-                }
-                resetForNewChar(false);
-                state.currentChar = char;
-                state.selectedCharId = char.id;
-                state.phase = 'draw';
+            function lockSelection() {
+                state.isLocked = true;
+                document.querySelectorAll('.thumb-btn:not(.exit-btn)').forEach(btn => {
+                    btn.disabled = true;
+                });
+                exitBtn.style.display = 'block';
+            }
+
+            function unlockSelection() {
                 state.isLocked = false;
-                renderOracle();
-                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
-                btnVoice.disabled = true;
-                btnVoice.textContent = '🎙️ 唸咒';
-                btnVoice.classList.remove('recording');
-                updateThumbnails();
-                updateThumbnailLockState();
-                startCamera();
-                preConnectWebSocket();
-                prepareAudio();
+                document.querySelectorAll('.thumb-btn:not(.exit-btn)').forEach(btn => {
+                    btn.disabled = false;
+                });
+                exitBtn.style.display = 'none';
             }
 
-            function pickRandomChar() {
-                const total = CHARACTERS.length;
-                if (state.usedCharIds.length >= total) {
-                    state.usedCharIds = [];
-                }
-                const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
-                if (available.length === 0) {
-                    state.usedCharIds = [];
-                    return CHARACTERS[Math.floor(Math.random() * total)];
-                }
-                const picked = available[Math.floor(Math.random() * available.length)];
-                state.usedCharIds.push(picked.id);
-                return picked;
-            }
-
+            // ========== 12. 流程控制 ==========
             function initLevel() {
-                resetForNewChar(false);
-                state.currentChar = pickRandomChar();
-                state.selectedCharId = state.currentChar.id;
-                state.phase = 'draw';
-                state.isLocked = false;
-                renderOracle();
-                setStatus(`✍️ 請描寫下方的 <span class="highlight">甲骨文字形</span>`, false);
+                // 初始状态为选择
+                state.phase = 'select';
+                state.selectedCharId = null;
+                setStatus('👆 請選擇一個符咒', false);
+                btnClear.disabled = true;
+                btnVerify.disabled = true;
                 btnVoice.disabled = true;
+                btnNext.style.display = 'none';
+                btnVoice.style.display = 'inline-flex';
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
-                updateThumbnails();
-                updateThumbnailLockState();
-                startCamera();
-                preConnectWebSocket();
-                prepareAudio();
+                renderOracle();
+                // 生成缩略图
+                renderThumbnails();
+                exitBtn.style.display = 'none';
+                unlockSelection();
             }
 
-            // ========== 12. 縮略圖 ==========
-            function buildThumbnails() {
-                thumbnailBar.innerHTML = '';
+            function renderThumbnails() {
+                // 清空除退出按钮外的所有按钮
+                const exit = document.getElementById('exitBtn');
+                thumbColumn.innerHTML = '';
                 CHARACTERS.forEach(char => {
-                    const div = document.createElement('div');
-                    div.className = 'thumb-item';
-                    div.dataset.id = char.id;
-
+                    const btn = document.createElement('button');
+                    btn.className = 'thumb-btn';
+                    btn.dataset.id = char.id;
                     const img = document.createElement('img');
-                    img.className = 'thumb-img';
                     img.src = char.imgSrc;
                     img.alt = char.char;
-                    img.loading = 'lazy';
-                    div.appendChild(img);
-
-                    // 移除標籤和對勾
-
-                    div.addEventListener('click', () => {
+                    btn.appendChild(img);
+                    btn.addEventListener('click', () => {
                         if (state.isLocked) return;
-                        if (state.selectedCharId === char.id && state.phase !== 'select') return;
-                        loadLevel(char);
+                        selectChar(char.id);
+                        // 选中后显示退出按钮
+                        if (!state.isLocked) {
+                            exitBtn.style.display = 'block';
+                        }
                     });
-
-                    thumbnailBar.appendChild(div);
+                    thumbColumn.appendChild(btn);
                 });
-                updateThumbnails();
+                // 重新添加退出按钮
+                const exitBtnNew = document.createElement('button');
+                exitBtnNew.className = 'thumb-btn exit-btn';
+                exitBtnNew.id = 'exitBtn';
+                exitBtnNew.textContent = '✕ 退出';
+                exitBtnNew.style.display = 'none';
+                exitBtnNew.addEventListener('click', () => {
+                    exitSelection();
+                });
+                thumbColumn.appendChild(exitBtnNew);
+                // 更新引用
+                window.exitBtn = exitBtnNew;
             }
 
-            function updateThumbnails() {
-                const items = thumbnailBar.querySelectorAll('.thumb-item');
-                items.forEach(item => {
-                    const id = item.dataset.id;
-                    item.classList.remove('active');
-                    if (id === state.selectedCharId && state.phase !== 'select') {
-                        item.classList.add('active');
-                    }
-                    // 移除完成狀態
-                });
-            }
-
-            function updateThumbnailLockState() {
-                const items = thumbnailBar.querySelectorAll('.thumb-item');
-                items.forEach(item => {
-                    if (state.isLocked && state.phase !== 'select') {
-                        item.classList.add('locked');
-                    } else {
-                        item.classList.remove('locked');
-                    }
-                });
-            }
-
-            // ========== 13. 按鈕事件 ==========
+            // ========== 13. 验证、清除、语音切换等 ==========
             function handleVerify() {
-                if (state.isVerifying || state.phase === 'reveal' || state.phase === 'select') return;
-                if (state.canvasLocked) {
-                    setStatus('⚠️ 符文已驗證通過，請進行唸咒', true);
-                    return;
-                }
+                if (state.isVerifying || state.phase === 'reveal') return;
+                if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
+                if (state.phase === 'select') { setStatus('⚠️ 請先選擇一個符咒', true); return; }
                 if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
                     setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
                     return;
@@ -1722,18 +1646,19 @@
                     if (score >= THRESHOLDS.drawPass) {
                         state.canvasLocked = true;
                         state.phase = 'voice';
-                        state.isLocked = true;
                         setStatus(`✅ 符文契合度合格！咒語已解鎖`, false);
-                        pinyinDisplay.textContent = state.currentChar.pinyinTone;
-                        pinyinDisplay.style.display = 'block';
-                        setTimeout(() => pinyinDisplay.classList.add('show'), 50);
+                        const char = CHARACTERS.find(c => c.id === state.selectedCharId);
+                        if (char) {
+                            pinyinDisplay.textContent = char.pinyinTone;
+                            pinyinDisplay.style.display = 'block';
+                            setTimeout(() => pinyinDisplay.classList.add('show'), 50);
+                        }
                         btnVoice.disabled = false;
                         btnVoice.textContent = '🎙️ 唸咒';
-                        setStatus(`🗣️ 請唸出咒語`, false);
+                        setStatus(`🗣️ 請唸出咒語（語音識別自動比對）`, false);
                         renderOracle();
-                        updateThumbnailLockState();
-                        prepareAudio();
-                        preConnectWebSocket();
+                        // 锁定缩略图
+                        lockSelection();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
                     }
@@ -1747,43 +1672,18 @@
                 setStatus('✍️ 已清除，重新描寫', false);
             }
 
-            function handleVoiceToggle() {
-                if (state.phase !== 'voice') {
-                    setStatus('⚠️ 請先通過符文驗證', true);
-                    return;
-                }
-                if (isRecording) stopRecording(false);
-                else startRecording();
+            function handleNext() {
+                // 继续下一关：直接退出选择状态
+                exitSelection();
+                // 释放资源后，重新显示缩略图
+                renderThumbnails();
+                initLevel();
             }
 
-            function handleExit() {
-                state.isLocked = false;
-                state.phase = 'select';
-                state.canvasLocked = false;
-                state.selectedCharId = null;
-                closeWS();
-                resetAudioNode();
-                drawHistory = [];
-                renderOracle();
-                revealArea.classList.remove('show');
-                revealArea.style.display = 'none';
-                placeholderArea.style.display = 'flex';
-                animalImage.style.display = 'none';
-                pinyinDisplay.classList.remove('show');
-                pinyinDisplay.textContent = '';
-                pinyinDisplay.style.display = 'none';
-                btnVoice.style.display = 'inline-flex';
-                btnVoice.disabled = true;
-                btnVoice.textContent = '🎙️ 唸咒';
-                btnVoice.classList.remove('recording');
-                btnVerify.disabled = false;
-                btnClear.disabled = false;
-                btnExit.disabled = false;
-                state.phase = 'select';
-                state.currentChar = null;
-                setStatus('🔮 請選擇一個 <span class="highlight">符咒</span> 開始', false);
-                updateThumbnails();
-                updateThumbnailLockState();
+            function handleVoiceToggle() {
+                if (state.phase !== 'voice') { setStatus('⚠️ 請先通過符文驗證', true); return; }
+                if (isRecording) stopRecording(false);
+                else startRecording();
             }
 
             function setStatus(html, isError = false) {
@@ -1811,7 +1711,7 @@
                             resolve();
                         };
                         img.onerror = () => {
-                            // 生成佔位圖
+                            // 使用占位图
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
                             fallbackCanvas.height = 200;
@@ -1847,12 +1747,13 @@
 
                 resizeCanvas();
                 bindCanvasEvents();
-                buildThumbnails();
-
                 btnClear.addEventListener('click', handleClear);
                 btnVerify.addEventListener('click', handleVerify);
                 btnVoice.addEventListener('click', handleVoiceToggle);
-                btnExit.addEventListener('click', handleExit);
+                btnNext.addEventListener('click', handleNext);
+
+                // 初始化选择界面
+                initLevel();
 
                 let resizeTimer;
                 window.addEventListener('resize', () => {
@@ -1860,30 +1761,10 @@
                     resizeTimer = setTimeout(resizeCanvas, 200);
                 });
 
-                state.phase = 'select';
-                state.isLocked = false;
-                state.currentChar = null;
-                state.selectedCharId = null;
-                setStatus('🔮 請選擇一個 <span class="highlight">符咒</span> 開始', false);
-                btnVoice.disabled = true;
-                btnVerify.disabled = true;
-                btnClear.disabled = true;
-                updateThumbnails();
-                updateThumbnailLockState();
-
                 setTimeout(() => loadingOverlay.classList.add('hidden'), 600);
-
                 document.addEventListener('touchstart', () => {
                     if (audioContext && audioContext.state === 'suspended') audioContext.resume().catch(() => {});
                 }, { passive: true });
-
-                try {
-                    await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(stream => {
-                        stream.getTracks().forEach(t => t.stop());
-                    }).catch(() => {});
-                } catch (e) {}
-
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (左右分屏 · 硃砂紅筆跡 · 無單字限制)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
