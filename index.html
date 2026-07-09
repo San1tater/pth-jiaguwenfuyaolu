@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
     </script>
     <style>
+        /* ===== 样式（与之前完全一致，为节省篇幅此处保留完整） ===== */
         * {
             margin: 0;
             padding: 0;
@@ -35,13 +36,12 @@
             background: #f5f0e8;
         }
 
-        /* ===== 左側面板（包含縮略圖列 + 主內容） ===== */
+        /* 左侧面板 */
         #left-panel {
             flex: 0 0 50%;
             height: 100vh;
             display: flex;
             flex-direction: row;
-            /* 改為行排列：左列縮略圖，右側內容 */
             align-items: stretch;
             padding: 0;
             background: rgba(255, 250, 240, 0.85);
@@ -64,14 +64,19 @@
             z-index: 0;
         }
         @keyframes breatheGlow {
-            0% { opacity: 0.3; transform: scale(1); }
-            100% { opacity: 0.8; transform: scale(1.05); }
+            0% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
         }
 
-        /* ---- 縮略圖列（垂直） ---- */
+        /* 缩略图列（垂直） */
         #thumbnail-bar {
             flex: 0 0 12vh;
-            /* 固定寬度 */
             width: 12vh;
             height: 100%;
             display: flex;
@@ -142,7 +147,7 @@
             display: block;
         }
 
-        /* ---- 右側內容容器 ---- */
+        /* 右侧内容容器 */
         #left-content {
             flex: 1;
             display: flex;
@@ -156,7 +161,7 @@
             min-width: 0;
         }
 
-        /* ---- 狀態區 ---- */
+        /* 状态区 */
         #status-area {
             width: 100%;
             max-width: 580px;
@@ -201,11 +206,17 @@
             animation: pinyinPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         @keyframes pinyinPop {
-            0% { opacity: 0; transform: scale(0.6) translateY(10px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
+            0% {
+                opacity: 0;
+                transform: scale(0.6) translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
-        /* ---- 畫布 ---- */
+        /* 画布 */
         #canvas-wrapper {
             position: relative;
             width: 100%;
@@ -241,7 +252,7 @@
             z-index: 1;
         }
 
-        /* ---- 控制按鈕 ---- */
+        /* 控制按钮 */
         #controls {
             display: flex;
             flex-wrap: wrap;
@@ -308,8 +319,13 @@
             background: rgba(200, 70, 70, 0.1);
         }
         @keyframes pulseMic {
-            0%, 100% { box-shadow: 0 0 10px rgba(192, 57, 43, 0.12); }
-            50% { box-shadow: 0 0 30px rgba(192, 57, 43, 0.25), 0 0 60px rgba(192, 57, 43, 0.05); }
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(192, 57, 43, 0.12);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(192, 57, 43, 0.25), 0 0 60px rgba(192, 57, 43, 0.05);
+            }
         }
         .btn-clear {
             background: rgba(200, 180, 160, 0.15);
@@ -333,7 +349,7 @@
             transform: none;
         }
 
-        /* ===== 右側 AR 相機 ===== */
+        /* 右侧 AR 相机 */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -397,8 +413,14 @@
             display: flex;
         }
         @keyframes revealAppear {
-            0% { opacity: 0; transform: scale(0.6) rotate(-6deg); }
-            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+            0% {
+                opacity: 0;
+                transform: scale(0.6) rotate(-6deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
         }
 
         #modern-char {
@@ -416,8 +438,12 @@
             animation: charGlow 3s ease-in-out infinite alternate;
         }
         @keyframes charGlow {
-            0% { text-shadow: 0 0 50px rgba(184, 134, 11, 0.2), 0 0 100px rgba(184, 134, 11, 0.05); }
-            100% { text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15); }
+            0% {
+                text-shadow: 0 0 50px rgba(184, 134, 11, 0.2), 0 0 100px rgba(184, 134, 11, 0.05);
+            }
+            100% {
+                text-shadow: 0 0 80px rgba(184, 134, 11, 0.4), 0 0 180px rgba(184, 134, 11, 0.15);
+            }
         }
 
         #animal-image {
@@ -435,11 +461,16 @@
             z-index: 1;
         }
         @keyframes floatAnimal {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-12px); }
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-12px);
+            }
         }
 
-        /* ---- 衝擊波特效 ---- */
+        /* 冲击波特效 */
         #shockwave-container {
             position: absolute;
             top: 0;
@@ -487,7 +518,7 @@
             }
         }
 
-        /* ===== 加載遮罩 ===== */
+        /* 加载遮罩 */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -519,11 +550,15 @@
             margin-bottom: 2vh;
         }
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
-        /* 響應式微調 */
+        /* 响应式微调 */
         @media (max-width: 640px) {
             #thumbnail-bar {
                 flex: 0 0 10vh;
@@ -669,30 +704,118 @@
             // ========== 3. 同音字映射（含擴展） ==========
             function buildFullPinyinMap() {
                 const baseMap = {
-                    '羊': 'yang', '阳': 'yang', '杨': 'yang', '扬': 'yang', '洋': 'yang',
-                    '佯': 'yang', '疡': 'yang', '徉': 'yang', '炀': 'yang', '烊': 'yang',
-                    '旸': 'yang', '飏': 'yang', '蛘': 'yang', '阚': 'yang',
-                    '陽': 'yang', '楊': 'yang', '揚': 'yang', '暘': 'yang',
-                    '馬': 'ma', '马': 'ma', '码': 'ma', '玛': 'ma', '蚂': 'ma',
-                    '杩': 'ma', '砝': 'ma', '犸': 'ma', '唛': 'ma', '遤': 'ma',
-                    '碼': 'ma', '瑪': 'ma', '螞': 'ma',
-                    '牛': 'niu', '妞': 'niu', '扭': 'niu', '纽': 'niu', '钮': 'niu',
-                    '拗': 'niu', '忸': 'niu', '沤': 'niu', '紐': 'niu', '鈕': 'niu',
-                    '理由': 'niu', '理': 'niu', '由': 'niu',
-                    '鳥': 'niao', '鸟': 'niao', '袅': 'niao', '嬲': 'niao', '茑': 'niao',
-                    '裊': 'niao', '你好': 'niao', '你': 'niao', '好': 'niao',
-                    '魚': 'yu', '鱼': 'yu', '渔': 'yu', '余': 'yu', '于': 'yu',
-                    '娱': 'yu', '愚': 'yu', '隅': 'yu', '俞': 'yu', '逾': 'yu',
-                    '渝': 'yu', '瑜': 'yu', '萸': 'yu', '榆': 'yu', '虞': 'yu',
-                    '舆': 'yu', '玙': 'yu', '餘': 'yu', '於': 'yu', '娛': 'yu',
-                    '愚': 'yu', '隅': 'yu', '俞': 'yu', '逾': 'yu', '渝': 'yu',
-                    '瑜': 'yu', '榆': 'yu', '虞': 'yu', '輿': 'yu', '与': 'yu',
-                    '屿': 'yu', '宇': 'yu', '羽': 'yu', '雨': 'yu', '语': 'yu',
-                    '玉': 'yu', '育': 'yu', '郁': 'yu', '浴': 'yu', '欲': 'yu',
-                    '裕': 'yu', '喻': 'yu', '愈': 'yu', '豫': 'yu', '预': 'yu',
-                    '遇': 'yu', '御': 'yu', '寓': 'yu', '誉': 'yu', '域': 'yu',
-                    '越': 'yu', '阅': 'yu', '跃': 'yu', '粤': 'yu', '月': 'yu',
-                    '乐': 'yu', '岳': 'yu', '钥': 'yu', '與': 'yu',
+                    '羊': 'yang',
+                    '阳': 'yang',
+                    '杨': 'yang',
+                    '扬': 'yang',
+                    '洋': 'yang',
+                    '佯': 'yang',
+                    '疡': 'yang',
+                    '徉': 'yang',
+                    '炀': 'yang',
+                    '烊': 'yang',
+                    '旸': 'yang',
+                    '飏': 'yang',
+                    '蛘': 'yang',
+                    '阚': 'yang',
+                    '陽': 'yang',
+                    '楊': 'yang',
+                    '揚': 'yang',
+                    '暘': 'yang',
+                    '馬': 'ma',
+                    '马': 'ma',
+                    '码': 'ma',
+                    '玛': 'ma',
+                    '蚂': 'ma',
+                    '杩': 'ma',
+                    '砝': 'ma',
+                    '犸': 'ma',
+                    '唛': 'ma',
+                    '遤': 'ma',
+                    '碼': 'ma',
+                    '瑪': 'ma',
+                    '螞': 'ma',
+                    '牛': 'niu',
+                    '妞': 'niu',
+                    '扭': 'niu',
+                    '纽': 'niu',
+                    '钮': 'niu',
+                    '拗': 'niu',
+                    '忸': 'niu',
+                    '沤': 'niu',
+                    '紐': 'niu',
+                    '鈕': 'niu',
+                    '理由': 'niu',
+                    '理': 'niu',
+                    '由': 'niu',
+                    '鳥': 'niao',
+                    '鸟': 'niao',
+                    '袅': 'niao',
+                    '嬲': 'niao',
+                    '茑': 'niao',
+                    '裊': 'niao',
+                    '你好': 'niao',
+                    '你': 'niao',
+                    '好': 'niao',
+                    '魚': 'yu',
+                    '鱼': 'yu',
+                    '渔': 'yu',
+                    '余': 'yu',
+                    '于': 'yu',
+                    '娱': 'yu',
+                    '愚': 'yu',
+                    '隅': 'yu',
+                    '俞': 'yu',
+                    '逾': 'yu',
+                    '渝': 'yu',
+                    '瑜': 'yu',
+                    '萸': 'yu',
+                    '榆': 'yu',
+                    '虞': 'yu',
+                    '舆': 'yu',
+                    '玙': 'yu',
+                    '餘': 'yu',
+                    '於': 'yu',
+                    '娛': 'yu',
+                    '愚': 'yu',
+                    '隅': 'yu',
+                    '俞': 'yu',
+                    '逾': 'yu',
+                    '渝': 'yu',
+                    '瑜': 'yu',
+                    '榆': 'yu',
+                    '虞': 'yu',
+                    '輿': 'yu',
+                    '与': 'yu',
+                    '屿': 'yu',
+                    '宇': 'yu',
+                    '羽': 'yu',
+                    '雨': 'yu',
+                    '语': 'yu',
+                    '玉': 'yu',
+                    '育': 'yu',
+                    '郁': 'yu',
+                    '浴': 'yu',
+                    '欲': 'yu',
+                    '裕': 'yu',
+                    '喻': 'yu',
+                    '愈': 'yu',
+                    '豫': 'yu',
+                    '预': 'yu',
+                    '遇': 'yu',
+                    '御': 'yu',
+                    '寓': 'yu',
+                    '誉': 'yu',
+                    '域': 'yu',
+                    '越': 'yu',
+                    '阅': 'yu',
+                    '跃': 'yu',
+                    '粤': 'yu',
+                    '月': 'yu',
+                    '乐': 'yu',
+                    '岳': 'yu',
+                    '钥': 'yu',
+                    '與': 'yu',
                 };
                 const map = {};
                 CHARACTERS.forEach(item => {
@@ -714,7 +837,7 @@
                 currentChar: null,
                 phase: 'select',
                 canvasLocked: false,
-                isRecording: false,
+                isRecording: false, // 本地录音标志（与全局变量同步）
                 isVerifying: false,
                 drawScore: 0,
                 audioContext: null,
@@ -725,7 +848,7 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
-                wsConnectPromise: null,
+                wsConnectPromise: null, // 用于连接等待
                 usedCharIds: [],
                 recordStartTime: 0,
                 minDurationTimer: null,
@@ -739,9 +862,7 @@
                 resultHandled: false,
                 isLocked: false,
                 selectedCharId: null,
-                // 新增：金色筆跡標誌
                 penColorGold: false,
-                // 動畫相關
                 animFrameId: null,
                 glowPhase: 0,
             };
@@ -784,35 +905,31 @@
                 ctx.lineWidth = Math.max(3, canvasW * 0.02);
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                // 默認硃砂紅
                 ctx.strokeStyle = '#c0392b';
                 ctx.shadowColor = 'rgba(192, 57, 43, 0.15)';
                 ctx.shadowBlur = 8;
                 renderOracle();
             }
 
-            // 繪製函數，支持金色動效
             function renderOracle() {
                 ctx.clearRect(0, 0, canvasW, canvasH);
+
+                if (!state.currentChar) {
+                    return;
+                }
+
                 const char = state.currentChar;
-                if (char && char.img && char.img.complete && char.img.naturalWidth > 0) {
+                if (char.img && char.img.complete && char.img.naturalWidth > 0) {
                     ctx.save();
                     ctx.globalAlpha = 0.22;
                     ctx.drawImage(char.img, 0, 0, canvasW, canvasH);
                     ctx.restore();
-                } else {
-                    ctx.fillStyle = '#ddd';
-                    ctx.font = '18px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('字形載入中...', canvasW / 2, canvasH / 2);
                 }
+
                 if (drawHistory.length > 0) {
                     ctx.save();
-                    // 判斷是否使用金色
                     const useGold = state.penColorGold || (state.canvasLocked && state.phase === 'voice');
                     if (useGold) {
-                        // 金色動效：隨時間變化亮度和光暈
                         const pulse = 0.8 + 0.2 * Math.sin(state.glowPhase);
                         ctx.strokeStyle = `rgba(255, 215, 0, ${pulse})`;
                         ctx.shadowColor = `rgba(255, 215, 0, ${0.3 * pulse})`;
@@ -837,9 +954,9 @@
                 }
             }
 
-            // 動畫循環，讓金色筆跡呼吸
             function startGlowAnimation() {
                 if (state.animFrameId) return;
+
                 function animate() {
                     state.glowPhase += 0.05;
                     if (state.penColorGold || (state.canvasLocked && state.phase === 'voice')) {
@@ -857,7 +974,6 @@
                 }
             }
 
-            // 獲取位置
             function getPos(e) {
                 const rect = canvas.getBoundingClientRect();
                 const touch = e.touches ? e.touches[0] : e;
@@ -976,7 +1092,6 @@
             }
 
             // ========== 8. 音頻與相機 ==========
-            // (此部分與之前相同，略作調整)
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -1058,11 +1173,12 @@
                 return workletBlobURL;
             }
 
+            // 全局变量（用于音频处理）
             let audioContext = null,
                 audioWorkletNode = null,
                 mediaStream = null,
                 cameraStream = null;
-            let isRecording = false;
+            let recordingActive = false; // 替代 state.isRecording 用于内部判断
             let recordTimer = null;
             let sourceNode = null;
 
@@ -1132,7 +1248,7 @@
                         sourceNode = audioContext.createMediaStreamSource(mediaStream);
                         audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
                         audioWorkletNode.port.onmessage = (e) => {
-                            if (e.data.type === 'audio' && state.isRecording && state.wsReady) {
+                            if (e.data.type === 'audio' && recordingActive && state.wsReady) {
                                 const buffer = e.data.buffer;
                                 const bytes = new Uint8Array(buffer);
                                 let binary = '';
@@ -1213,7 +1329,7 @@
             }
 
             async function startRecording() {
-                if (isRecording) return;
+                if (recordingActive) return;
                 if (state.phase !== 'voice') {
                     setStatus('⚠️ 請先通過符文驗證再唸咒', true);
                     return;
@@ -1222,6 +1338,7 @@
                 if (!state.audioPrepared) {
                     await prepareAudio();
                 }
+                // 确保 WebSocket 已连接
                 if (!state.wsReady) {
                     console.log('[WS] 等待 WebSocket 就緒...');
                     if (state.wsConnectPromise) {
@@ -1230,6 +1347,11 @@
                         await connectWebSocket();
                     }
                     console.log('[WS] 就緒');
+                }
+                // 再次检查 wsReady，如果连接失败则中止
+                if (!state.wsReady) {
+                    setStatus('⚠️ 語音服務連線失敗，請重試', true);
+                    return;
                 }
 
                 if (!audioWorkletNode) {
@@ -1240,7 +1362,7 @@
                     await audioContext.resume();
                 }
 
-                isRecording = true;
+                recordingActive = true;
                 state.isRecording = true;
                 state.recordStartTime = Date.now();
                 state.resultReceived = false;
@@ -1251,12 +1373,12 @@
                 setStatus('🎤 請朗讀咒語', false);
                 if (recordTimer) clearTimeout(recordTimer);
                 recordTimer = setTimeout(() => {
-                    if (isRecording) stopRecording(true);
+                    if (recordingActive) stopRecording(true);
                 }, AUDIO_CONFIG.maxRecordSeconds * 1000);
             }
 
             function stopRecording(auto = false) {
-                if (!isRecording) return;
+                if (!recordingActive) return;
                 if (state.isFinalizing) return;
 
                 const elapsed = Date.now() - state.recordStartTime;
@@ -1313,7 +1435,7 @@
                             console.warn('WS未就緒或未開啟，跳過尾幀');
                         }
                         state.audioBuffer = [];
-                        isRecording = false;
+                        recordingActive = false;
                         state.isRecording = false;
                         state.isFinalizing = false;
                         state.isFlushing = false;
@@ -1326,7 +1448,7 @@
                     if (state.wsReady && state.wsConnection && state.wsConnection.readyState === WebSocket.OPEN) {
                         sendAudioEnd();
                     }
-                    isRecording = false;
+                    recordingActive = false;
                     state.isRecording = false;
                     state.isFinalizing = false;
                     state.isFlushing = false;
@@ -1386,10 +1508,12 @@
                             console.log('[WS] 收到訊息');
                             handleWSMessage(e.data);
                         };
-                        state.wsConnection.onclose = () => {
+                        state.wsConnection.onclose = (e) => {
                             state.wsReady = false;
                             state.wsConnection = null;
-                            console.log('[WS] 連線關閉');
+                            // 重要：清空 Promise，避免残留
+                            state.wsConnectPromise = null;
+                            console.log('[WS] 連線關閉，代碼:', e.code);
                         };
                     });
                 } catch (e) {
@@ -1449,6 +1573,8 @@
                     const json = JSON.parse(text);
                     if (json.code && json.code !== 0) {
                         console.warn('[WS] 訊飛 API 錯誤:', json.message);
+                        // 如果发生错误，关闭连接并重置
+                        closeWS();
                         return;
                     }
                     let recognized = '';
@@ -1475,7 +1601,7 @@
                 }
             }
 
-            // ========== 9. 識別結果處理 ==========
+            // ========== 9. 識別結果處理（修正狀態重置） ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
@@ -1486,11 +1612,17 @@
                 const recognizedPinyin = pinyinMap[recognized] || null;
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
+                // 无论匹配与否，必须重置录音状态和按钮
+                recordingActive = false;
+                state.isRecording = false;
+                state.isFinalizing = false;
+                state.isFlushing = false;
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
                 btnVoice.disabled = (state.phase !== 'voice');
-                state.isFinalizing = false;
-                state.isFlushing = false;
+                // 关闭WS并重置音频节点（清理资源）
+                closeWS();
+                resetAudioNode();
 
                 if (isMatch) {
                     setStatus('🎉 咒語正確！妖怪現形！', false);
@@ -1500,13 +1632,14 @@
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
-                    closeWS();
-                    resetAudioNode();
+                    // 重新预连接WS，为下次录音做准备
+                    preConnectWebSocket();
+                    prepareAudio();
                 }
                 state.resultHandled = false;
             }
 
-            // ========== 10. 妖怪現形（含衝擊波） ==========
+            // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
@@ -1524,9 +1657,7 @@
                 btnVerify.disabled = true;
                 btnClear.disabled = true;
                 state.canvasLocked = true;
-                // 保持金色
                 state.penColorGold = true;
-                // 觸發衝擊波
                 triggerShockwave();
                 closeWS();
                 renderOracle();
@@ -1534,19 +1665,15 @@
             }
 
             function triggerShockwave() {
-                // 重置動畫
                 const container = shockwaveContainer;
                 container.classList.remove('active');
-                // 強制回流
                 void container.offsetWidth;
-                // 重新添加環
                 container.innerHTML = `
                     <div class="shockwave-ring"></div>
                     <div class="shockwave-ring"></div>
                     <div class="shockwave-ring"></div>
                 `;
                 container.classList.add('active');
-                // 動畫結束後移除active，但保留
                 setTimeout(() => {
                     container.classList.remove('active');
                 }, 1500);
@@ -1554,12 +1681,11 @@
 
             // ========== 11. 流程控制 ==========
             function resetForNewChar(keepLock = false) {
-                // 停止金色動畫
                 stopGlowAnimation();
                 state.penColorGold = false;
                 closeWS();
                 state.wsConnectPromise = null;
-                isRecording = false;
+                recordingActive = false;
                 state.isRecording = false;
                 state.audioBuffer = [];
                 state.drawScore = 0;
@@ -1580,7 +1706,6 @@
                 revealArea.style.display = 'none';
                 placeholderArea.style.display = 'flex';
                 animalImage.style.display = 'none';
-                // 清除衝擊波
                 shockwaveContainer.classList.remove('active');
                 shockwaveContainer.innerHTML = '';
                 pinyinDisplay.classList.remove('show');
@@ -1593,16 +1718,12 @@
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
                 state.audioPrepared = false;
-                if (!keepLock) {
-                    state.isLocked = false;
-                }
+                if (!keepLock) state.isLocked = false;
                 updateThumbnailLockState();
             }
 
             function loadLevel(char) {
-                if (state.isLocked && state.phase !== 'select') {
-                    return;
-                }
+                if (state.isLocked && state.phase !== 'select') return;
                 resetForNewChar(false);
                 state.currentChar = char;
                 state.selectedCharId = char.id;
@@ -1618,20 +1739,14 @@
                 startCamera();
                 preConnectWebSocket();
                 prepareAudio();
-                // 啟動動畫循環（用於金色呼吸）
                 startGlowAnimation();
             }
 
             function pickRandomChar() {
                 const total = CHARACTERS.length;
-                if (state.usedCharIds.length >= total) {
-                    state.usedCharIds = [];
-                }
+                if (state.usedCharIds.length >= total) state.usedCharIds = [];
                 const available = CHARACTERS.filter(c => !state.usedCharIds.includes(c.id));
-                if (available.length === 0) {
-                    state.usedCharIds = [];
-                    return CHARACTERS[Math.floor(Math.random() * total)];
-                }
+                if (available.length === 0) { state.usedCharIds = []; return CHARACTERS[Math.floor(Math.random() * total)]; }
                 const picked = available[Math.floor(Math.random() * available.length)];
                 state.usedCharIds.push(picked.id);
                 return picked;
@@ -1663,20 +1778,17 @@
                     const div = document.createElement('div');
                     div.className = 'thumb-item';
                     div.dataset.id = char.id;
-
                     const img = document.createElement('img');
                     img.className = 'thumb-img';
                     img.src = char.imgSrc;
                     img.alt = char.char;
                     img.loading = 'lazy';
                     div.appendChild(img);
-
                     div.addEventListener('click', () => {
                         if (state.isLocked) return;
                         if (state.selectedCharId === char.id && state.phase !== 'select') return;
                         loadLevel(char);
                     });
-
                     thumbnailBar.appendChild(div);
                 });
                 updateThumbnails();
@@ -1687,30 +1799,22 @@
                 items.forEach(item => {
                     const id = item.dataset.id;
                     item.classList.remove('active');
-                    if (id === state.selectedCharId && state.phase !== 'select') {
-                        item.classList.add('active');
-                    }
+                    if (id === state.selectedCharId && state.phase !== 'select') item.classList.add('active');
                 });
             }
 
             function updateThumbnailLockState() {
                 const items = thumbnailBar.querySelectorAll('.thumb-item');
                 items.forEach(item => {
-                    if (state.isLocked && state.phase !== 'select') {
-                        item.classList.add('locked');
-                    } else {
-                        item.classList.remove('locked');
-                    }
+                    if (state.isLocked && state.phase !== 'select') item.classList.add('locked');
+                    else item.classList.remove('locked');
                 });
             }
 
             // ========== 13. 按鈕事件 ==========
             function handleVerify() {
                 if (state.isVerifying || state.phase === 'reveal' || state.phase === 'select') return;
-                if (state.canvasLocked) {
-                    setStatus('⚠️ 符文已驗證通過，請進行唸咒', true);
-                    return;
-                }
+                if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
                 if (drawHistory.length === 0 || drawHistory.every(p => p.length < 3)) {
                     setStatus('⚠️ 請先在畫布上描寫甲骨文', true);
                     return;
@@ -1727,7 +1831,6 @@
                         state.canvasLocked = true;
                         state.phase = 'voice';
                         state.isLocked = true;
-                        // 開啟金色筆跡
                         state.penColorGold = true;
                         setStatus(`✅ 符文契合度合格！咒語已解鎖`, false);
                         pinyinDisplay.textContent = state.currentChar.pinyinTone;
@@ -1742,7 +1845,6 @@
                         preConnectWebSocket();
                     } else {
                         setStatus(`❌ 符文契合度不足，再努力描寫！`, true);
-                        // 如果之前是金色，但驗證失敗，可考慮保持？但先重置為硃砂紅
                         state.penColorGold = false;
                         renderOracle();
                     }
@@ -1757,22 +1859,19 @@
             }
 
             function handleVoiceToggle() {
-                if (state.phase !== 'voice') {
-                    setStatus('⚠️ 請先通過符文驗證', true);
-                    return;
-                }
-                if (isRecording) stopRecording(false);
+                if (state.phase !== 'voice') { setStatus('⚠️ 請先通過符文驗證', true); return; }
+                if (recordingActive) stopRecording(false);
                 else startRecording();
             }
 
             function handleExit() {
-                // 退出時重置金色
                 state.penColorGold = false;
                 stopGlowAnimation();
                 state.isLocked = false;
                 state.phase = 'select';
                 state.canvasLocked = false;
                 state.selectedCharId = null;
+                state.currentChar = null;
                 closeWS();
                 resetAudioNode();
                 drawHistory = [];
@@ -1793,13 +1892,11 @@
                 btnVerify.disabled = false;
                 btnClear.disabled = false;
                 btnExit.disabled = false;
-                state.phase = 'select';
-                state.currentChar = null;
                 setStatus('🔮 請選擇一個 <span class="highlight">符咒</span> 開始', false);
                 updateThumbnails();
                 updateThumbnailLockState();
-                // 重啟動畫（但沒有金色，只是常規）
                 startGlowAnimation();
+                console.log('[退出] 畫布已清空，底圖已移除');
             }
 
             function setStatus(html, isError = false) {
@@ -1813,7 +1910,7 @@
                     state.wsConnection = null;
                 }
                 state.wsReady = false;
-                state.wsConnectPromise = null;
+                state.wsConnectPromise = null; // 清空 Promise
                 console.log('[WS] 已關閉');
             }
 
@@ -1823,10 +1920,8 @@
                     return new Promise((resolve) => {
                         const img = new Image();
                         img.crossOrigin = 'anonymous';
-                        img.onload = () => {
-                            char.img = img;
-                            resolve();
-                        };
+                        img.onload = () => { char.img = img;
+                            resolve(); };
                         img.onerror = () => {
                             const fallbackCanvas = document.createElement('canvas');
                             fallbackCanvas.width = 200;
@@ -1843,10 +1938,8 @@
                             fctx.fillText(char.char, 100, 100);
                             const imgData = fallbackCanvas.toDataURL();
                             const fallbackImg = new Image();
-                            fallbackImg.onload = () => {
-                                char.img = fallbackImg;
-                                resolve();
-                            };
+                            fallbackImg.onload = () => { char.img = fallbackImg;
+                                resolve(); };
                             fallbackImg.src = imgData;
                         };
                         img.src = char.imgSrc;
@@ -1887,7 +1980,6 @@
                 updateThumbnails();
                 updateThumbnailLockState();
 
-                // 啟動動畫循環（默認筆跡）
                 startGlowAnimation();
 
                 setTimeout(() => loadingOverlay.classList.add('hidden'), 600);
@@ -1902,7 +1994,7 @@
                     }).catch(() => {});
                 } catch (e) {}
 
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (左側垂直縮略圖 · 金色筆跡持續 · 衝擊波特效)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動 (修復WS殘留與狀態機錯亂)');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
