@@ -623,7 +623,6 @@
         (function() {
             'use strict';
 
-            // ========== 1. 配置 ==========
             const XF_CONFIG = {
                 APPID: '2600b137',
                 API_KEY: '8b012124ed213c06974cd469f29e134b',
@@ -634,13 +633,12 @@
             const THRESHOLDS = { drawPass: 45 };
             const MIN_RECORD_DURATION = 1000;
 
-            // ========== 2. 字庫 ==========
             const CHARACTERS = [{
                 id: 'yang',
                 char: '羊',
                 pinyinRaw: 'yang2',
                 pinyinTone: 'yáng',
-                imgSrc: 'images/羊_1.gif',
+                imgSrc: 'images/羊_1.png',
                 animalImg: 'images/羊.gif',
                 img: null,
             }, {
@@ -648,7 +646,7 @@
                 char: '馬',
                 pinyinRaw: 'ma3',
                 pinyinTone: 'mǎ',
-                imgSrc: 'images/馬_1.gif',
+                imgSrc: 'images/馬_1.png',
                 animalImg: 'images/馬.gif',
                 img: null,
             }, {
@@ -656,7 +654,7 @@
                 char: '牛',
                 pinyinRaw: 'niu2',
                 pinyinTone: 'niú',
-                imgSrc: 'images/牛_1.gif',
+                imgSrc: 'images/牛_1.png',
                 animalImg: 'images/牛.gif',
                 img: null,
             }, {
@@ -664,7 +662,7 @@
                 char: '鳥',
                 pinyinRaw: 'niao3',
                 pinyinTone: 'niǎo',
-                imgSrc: 'images/鳥_1.gif',
+                imgSrc: 'images/鳥_1.png',
                 animalImg: 'images/鳥.gif',
                 img: null,
             }, {
@@ -672,12 +670,11 @@
                 char: '魚',
                 pinyinRaw: 'yu2',
                 pinyinTone: 'yú',
-                imgSrc: 'images/魚_1.gif',
+                imgSrc: 'images/魚_1.png',
                 animalImg: 'images/魚.gif',
                 img: null,
             }];
 
-            // ========== 3. 同音字映射 ==========
             function buildFullPinyinMap() {
                 const baseMap = {
                     '羊': 'yang',
@@ -808,7 +805,6 @@
 
             const pinyinMap = buildFullPinyinMap();
 
-            // ========== 4. 狀態 ==========
             const state = {
                 currentChar: null,
                 phase: 'select',
@@ -843,7 +839,6 @@
                 glowPhase: 0,
             };
 
-            // ========== 5. DOM ==========
             const $ = id => document.getElementById(id);
             const canvas = $('oracleCanvas');
             const ctx = canvas.getContext('2d');
@@ -863,7 +858,6 @@
             const thumbnailBar = $('thumbnail-bar');
             const shockwaveContainer = $('shockwave-container');
 
-            // ========== 6. Canvas ==========
             let canvasW, canvasH;
             let isDrawing = false;
             let drawHistory = [];
@@ -999,7 +993,6 @@
                 canvas.addEventListener('mouseleave', endDraw);
             }
 
-            // ========== 7. 像素比對 ==========
             function computeF1Score() {
                 const dpr = window.devicePixelRatio || 1;
                 const w = Math.floor(canvasW * dpr);
@@ -1067,7 +1060,6 @@
                 return Math.round(f1 * 100);
             }
 
-            // ========== 8. 音頻與相機 ==========
             const workletCode = `
           class PCMProcessor extends AudioWorkletProcessor {
             constructor() {
@@ -1571,7 +1563,6 @@
                 }
             }
 
-            // ========== 9. 識別結果處理 ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
@@ -1606,7 +1597,6 @@
                 state.resultHandled = false;
             }
 
-            // ========== 10. 妖怪現形 ==========
             function revealMonster() {
                 state.phase = 'reveal';
                 const char = state.currentChar;
@@ -1646,7 +1636,6 @@
                 }, 1500);
             }
 
-            // ========== 11. 流程控制 ==========
             function resetForNewChar(keepLock = false) {
                 stopGlowAnimation();
                 state.penColorGold = false;
@@ -1738,7 +1727,6 @@
                 startGlowAnimation();
             }
 
-            // ========== 12. 縮略圖 ==========
             function buildThumbnails() {
                 thumbnailBar.innerHTML = '';
                 CHARACTERS.forEach(char => {
@@ -1778,7 +1766,6 @@
                 });
             }
 
-            // ========== 13. 按鈕事件 ==========
             function handleVerify() {
                 if (state.isVerifying || state.phase === 'reveal' || state.phase === 'select') return;
                 if (state.canvasLocked) { setStatus('⚠️ 符文已驗證通過，請進行唸咒', true); return; }
@@ -1881,7 +1868,6 @@
                 console.log('[WS] 已關閉');
             }
 
-            // ========== 14. 圖片加載 ==========
             function loadImages() {
                 const promises = CHARACTERS.map(char => {
                     return new Promise((resolve) => {
@@ -1915,7 +1901,6 @@
                 return Promise.all(promises);
             }
 
-            // ========== 15. 初始化 ==========
             async function init() {
                 loadingText.textContent = '📜 載入甲骨文字形圖片 ...';
                 await loadImages();
@@ -1961,7 +1946,7 @@
                     }).catch(() => {});
                 } catch (e) {}
 
-                console.log('🔮 《甲骨文伏妖錄》已啟動 (修復WS殘留與狀態機錯亂)');
+                console.log('🔮 《甲骨文伏妖錄》已啟動');
             }
 
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
