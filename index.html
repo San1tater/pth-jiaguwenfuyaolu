@@ -7,7 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js">
     </script>
     <style>
-        /* ===== 样式（与之前完全一致，为节省篇幅此处保留完整） ===== */
         * {
             margin: 0;
             padding: 0;
@@ -35,8 +34,6 @@
             height: 100vh;
             background: #f5f0e8;
         }
-
-        /* 左侧面板 */
         #left-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -73,8 +70,6 @@
                 transform: scale(1.05);
             }
         }
-
-        /* 缩略图列（垂直） */
         #thumbnail-bar {
             flex: 0 0 12vh;
             width: 12vh;
@@ -106,7 +101,6 @@
         #thumbnail-bar::-webkit-scrollbar-track {
             background: transparent;
         }
-
         .thumb-item {
             flex: 0 0 auto;
             width: 8vh;
@@ -146,8 +140,6 @@
             object-fit: contain;
             display: block;
         }
-
-        /* 右侧内容容器 */
         #left-content {
             flex: 1;
             display: flex;
@@ -160,8 +152,6 @@
             overflow: hidden;
             min-width: 0;
         }
-
-        /* 状态区 */
         #status-area {
             width: 100%;
             max-width: 580px;
@@ -215,8 +205,6 @@
                 transform: scale(1) translateY(0);
             }
         }
-
-        /* 画布 */
         #canvas-wrapper {
             position: relative;
             width: 100%;
@@ -251,8 +239,6 @@
             border-radius: 18px;
             z-index: 1;
         }
-
-        /* 控制按钮 */
         #controls {
             display: flex;
             flex-wrap: wrap;
@@ -348,8 +334,6 @@
             cursor: not-allowed;
             transform: none;
         }
-
-        /* 右侧 AR 相机 */
         #right-panel {
             flex: 0 0 50%;
             height: 100vh;
@@ -470,7 +454,6 @@
             }
         }
 
-        /* 冲击波特效 */
         #shockwave-container {
             position: absolute;
             top: 0;
@@ -518,7 +501,6 @@
             }
         }
 
-        /* 加载遮罩 */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -558,7 +540,6 @@
             }
         }
 
-        /* 响应式微调 */
         @media (max-width: 640px) {
             #thumbnail-bar {
                 flex: 0 0 10vh;
@@ -597,12 +578,9 @@
     </div>
 
     <div id="app">
-        <!-- 左側面板 -->
         <div id="left-panel">
-            <!-- 縮略圖列 -->
             <div id="thumbnail-bar"></div>
 
-            <!-- 主要內容區域 -->
             <div id="left-content">
                 <div id="status-area">
                     <div id="status-text">🔮 請選擇一個 <span class="highlight">符咒</span> 開始</div>
@@ -622,7 +600,6 @@
             </div>
         </div>
 
-        <!-- 右側 AR 面板 -->
         <div id="right-panel">
             <video id="camera-video" autoplay playsinline muted></video>
             <div id="placeholder-area">
@@ -633,7 +610,6 @@
             <div id="reveal-area">
                 <div id="modern-char">羊</div>
                 <img id="animal-image" src="" alt="妖怪">
-                <!-- 衝擊波容器 -->
                 <div id="shockwave-container">
                     <div class="shockwave-ring"></div>
                     <div class="shockwave-ring"></div>
@@ -664,44 +640,44 @@
                 char: '羊',
                 pinyinRaw: 'yang2',
                 pinyinTone: 'yáng',
-                imgSrc: 'images/羊_1.png',
-                animalImg: 'images/羊.png',
+                imgSrc: 'images/羊_1.gif',
+                animalImg: 'images/羊.gif',
                 img: null,
             }, {
                 id: 'ma',
                 char: '馬',
                 pinyinRaw: 'ma3',
                 pinyinTone: 'mǎ',
-                imgSrc: 'images/馬_1.png',
-                animalImg: 'images/馬.png',
+                imgSrc: 'images/馬_1.gif',
+                animalImg: 'images/馬.gif',
                 img: null,
             }, {
                 id: 'niu',
                 char: '牛',
                 pinyinRaw: 'niu2',
                 pinyinTone: 'niú',
-                imgSrc: 'images/牛_1.png',
-                animalImg: 'images/牛.png',
+                imgSrc: 'images/牛_1.gif',
+                animalImg: 'images/牛.gif',
                 img: null,
             }, {
                 id: 'niao',
                 char: '鳥',
                 pinyinRaw: 'niao3',
                 pinyinTone: 'niǎo',
-                imgSrc: 'images/鳥_1.png',
-                animalImg: 'images/鳥.png',
+                imgSrc: 'images/鳥_1.gif',
+                animalImg: 'images/鳥.gif',
                 img: null,
             }, {
                 id: 'yu',
                 char: '魚',
                 pinyinRaw: 'yu2',
                 pinyinTone: 'yú',
-                imgSrc: 'images/魚_1.png',
-                animalImg: 'images/魚.png',
+                imgSrc: 'images/魚_1.gif',
+                animalImg: 'images/魚.gif',
                 img: null,
             }];
 
-            // ========== 3. 同音字映射（含擴展） ==========
+            // ========== 3. 同音字映射 ==========
             function buildFullPinyinMap() {
                 const baseMap = {
                     '羊': 'yang',
@@ -837,7 +813,7 @@
                 currentChar: null,
                 phase: 'select',
                 canvasLocked: false,
-                isRecording: false, // 本地录音标志（与全局变量同步）
+                isRecording: false,
                 isVerifying: false,
                 drawScore: 0,
                 audioContext: null,
@@ -848,7 +824,7 @@
                 recordTimer: null,
                 wsConnection: null,
                 wsReady: false,
-                wsConnectPromise: null, // 用于连接等待
+                wsConnectPromise: null,
                 usedCharIds: [],
                 recordStartTime: 0,
                 minDurationTimer: null,
@@ -1173,12 +1149,11 @@
                 return workletBlobURL;
             }
 
-            // 全局变量（用于音频处理）
             let audioContext = null,
                 audioWorkletNode = null,
                 mediaStream = null,
                 cameraStream = null;
-            let recordingActive = false; // 替代 state.isRecording 用于内部判断
+            let recordingActive = false;
             let recordTimer = null;
             let sourceNode = null;
 
@@ -1338,7 +1313,6 @@
                 if (!state.audioPrepared) {
                     await prepareAudio();
                 }
-                // 确保 WebSocket 已连接
                 if (!state.wsReady) {
                     console.log('[WS] 等待 WebSocket 就緒...');
                     if (state.wsConnectPromise) {
@@ -1348,7 +1322,6 @@
                     }
                     console.log('[WS] 就緒');
                 }
-                // 再次检查 wsReady，如果连接失败则中止
                 if (!state.wsReady) {
                     setStatus('⚠️ 語音服務連線失敗，請重試', true);
                     return;
@@ -1458,7 +1431,6 @@
                 }
             }
 
-            // ---------- WebSocket ----------
             function preConnectWebSocket() {
                 if (state.wsReady) return Promise.resolve();
                 if (state.wsConnectPromise) return state.wsConnectPromise;
@@ -1511,7 +1483,6 @@
                         state.wsConnection.onclose = (e) => {
                             state.wsReady = false;
                             state.wsConnection = null;
-                            // 重要：清空 Promise，避免残留
                             state.wsConnectPromise = null;
                             console.log('[WS] 連線關閉，代碼:', e.code);
                         };
@@ -1573,7 +1544,6 @@
                     const json = JSON.parse(text);
                     if (json.code && json.code !== 0) {
                         console.warn('[WS] 訊飛 API 錯誤:', json.message);
-                        // 如果发生错误，关闭连接并重置
                         closeWS();
                         return;
                     }
@@ -1601,7 +1571,7 @@
                 }
             }
 
-            // ========== 9. 識別結果處理（修正狀態重置） ==========
+            // ========== 9. 識別結果處理 ==========
             function handleRecognitionResult(recognized) {
                 if (state.resultHandled) return;
                 state.resultHandled = true;
@@ -1612,7 +1582,6 @@
                 const recognizedPinyin = pinyinMap[recognized] || null;
                 const isMatch = recognizedPinyin && recognizedPinyin === targetPinyin;
 
-                // 无论匹配与否，必须重置录音状态和按钮
                 recordingActive = false;
                 state.isRecording = false;
                 state.isFinalizing = false;
@@ -1620,7 +1589,6 @@
                 btnVoice.textContent = '🎙️ 唸咒';
                 btnVoice.classList.remove('recording');
                 btnVoice.disabled = (state.phase !== 'voice');
-                // 关闭WS并重置音频节点（清理资源）
                 closeWS();
                 resetAudioNode();
 
@@ -1632,7 +1600,6 @@
                     state.phase = 'voice';
                     btnVoice.disabled = false;
                     btnVoice.textContent = '🎙️ 唸咒';
-                    // 重新预连接WS，为下次录音做准备
                     preConnectWebSocket();
                     prepareAudio();
                 }
@@ -1910,7 +1877,7 @@
                     state.wsConnection = null;
                 }
                 state.wsReady = false;
-                state.wsConnectPromise = null; // 清空 Promise
+                state.wsConnectPromise = null;
                 console.log('[WS] 已關閉');
             }
 
